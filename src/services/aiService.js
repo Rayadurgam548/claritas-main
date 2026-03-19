@@ -72,7 +72,7 @@ const chatWithDocument = async (documentText, analysisJson, query) => {
   const model = getModel('gemini-2.5-flash-lite', {}); // optimized conversational model
 
   return executeWithRetry(async () => {
-    const context = `--- DOCUMENT TEXT ---\n${documentText}\n\n--- PREVIOUS ANALYSIS ---\n${JSON.stringify(analysisJson)}\n`;
+    const context = documentText ? `--- DOCUMENT TEXT ---\n${documentText}\n\n--- PREVIOUS ANALYSIS ---\n${JSON.stringify(analysisJson)}\n` : `General Legal Inquiry (No specific document provided).`;
     
     const chat = model.startChat({
       history: [

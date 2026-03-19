@@ -6,6 +6,8 @@ import { getUser, logout } from '@/app/lib/auth';
 import { ScrollText, History, Clock, CheckCircle, FileText, Settings, Moon, Sun, Monitor, Trash2, LogOut, Home, MessageSquare, Folder, Calendar, BookOpen, Users } from 'lucide-react';
 import { cn } from '@/app/lib/utils';
 import { useTheme } from './ThemeProvider';
+import { useLanguage } from '@/context/LanguageContext';
+import { translations } from '@/lib/translations';
 
 interface SidebarProps {
   activeTab: string;
@@ -16,6 +18,8 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [user, setUser] = useState<any>(null);
   const { theme, setTheme } = useTheme();
+  const { language } = useLanguage();
+  const t = translations[language];
 
   useEffect(() => {
     setUser(getUser());
@@ -34,12 +38,12 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   }, []);
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: <Home className="w-4 h-4" /> },
-    { id: 'documents', label: 'Documents', icon: <Folder className="w-4 h-4" /> },
-    { id: 'ai', label: 'AI Assistant', icon: <MessageSquare className="w-4 h-4" /> },
-    { id: 'expertPanel', label: 'Expert Panel', icon: <Users className="w-4 h-4" /> },
-    { id: 'deadlines', label: 'Deadlines', icon: <Calendar className="w-4 h-4" /> },
-    { id: 'glossary', label: 'Legal Glossary', icon: <BookOpen className="w-4 h-4" /> },
+    { id: 'dashboard', label: t.dashboard, icon: <Home className="w-4 h-4" /> },
+    { id: 'documents', label: t.documents, icon: <Folder className="w-4 h-4" /> },
+    { id: 'ai', label: t.ai_assistant, icon: <MessageSquare className="w-4 h-4" /> },
+    { id: 'expertPanel', label: t.expert_panel, icon: <Users className="w-4 h-4" /> },
+    { id: 'deadlines', label: t.deadlines, icon: <Calendar className="w-4 h-4" /> },
+    { id: 'glossary', label: t.glossary, icon: <BookOpen className="w-4 h-4" /> },
   ];
 
   return (
@@ -56,7 +60,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           {/* Main Navigation */}
           <div>
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              Menu
+              {t.settings}
             </h2>
             <div className="space-y-1">
               {navItems.map(item => (
@@ -82,7 +86,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           {/* Recent Documents Mini List */}
           <div>
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-              <History className="w-4 h-4" /> Recent
+              <History className="w-4 h-4" /> {t.recent}
             </h2>
             <div className="space-y-1">
               {documents.length === 0 ? (
@@ -131,7 +135,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         </div>
         <div className="flex items-center justify-between px-2">
           <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            <Settings className="w-4 h-4" /> Settings
+            <Settings className="w-4 h-4" /> {t.settings}
           </button>
           <button onClick={logout} className="flex items-center text-sm font-medium text-danger hover:text-danger/80 transition-colors" title="Logout">
             <LogOut className="w-4 h-4" />

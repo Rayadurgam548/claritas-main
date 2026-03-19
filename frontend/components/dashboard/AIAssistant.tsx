@@ -5,11 +5,16 @@ import { LegalAPI } from '@/app/lib/api';
 import { MessageSquare, Send, Sparkles, FileText, Scale, Lightbulb, Upload } from 'lucide-react';
 import { cn } from '@/app/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '@/context/LanguageContext';
+import { translations } from '@/lib/translations';
 
 export function AIAssistant({ documentId }: { documentId?: string | null }) {
   const [messages, setMessages] = useState<any[]>([]);
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [localDocumentId, setLocalDocumentId] = useState<string | null>(documentId || null);
+  const { language } = useLanguage();
+  const t = translations[language];
 
   const handleSend = async (text: string) => {
     if (!text.trim()) return;
@@ -19,16 +24,8 @@ export function AIAssistant({ documentId }: { documentId?: string | null }) {
     setIsLoading(true);
 
     try {
-      if (documentId) {
-        const response = await LegalAPI.chat(documentId, text);
-        setMessages(prev => [...prev, { role: 'ai', content: response.answer }]);
-      } else {
-        setTimeout(() => {
-          setMessages(prev => [...prev, { role: 'ai', content: "General legal advice is simulated here. Please upload a specific document for precise analysis." }]);
-          setIsLoading(false);
-        }, 1500);
-        return;
-      }
+      const response = await LegalAPI.chat(localDocumentId || '', text);
+      setMessages(prev => [...prev, { role: 'ai', content: response.answer }]);
     } catch (error) {
       setMessages(prev => [...prev, { role: 'ai', content: 'Sorry, I encountered an error. Please try again later.' }]);
     } finally {
@@ -37,13 +34,8 @@ export function AIAssistant({ documentId }: { documentId?: string | null }) {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background relative">
+    <div className="flex-1 flex flex-col h-full bg-background relative overflow-hidden">
       
-      <div className="px-8 py-6 border-b border-border/50 shrink-0">
-        <h2 className="text-2xl font-bold tracking-tight mb-1 text-foreground">AI Legal Assistant</h2>
-        <p className="text-sm text-muted-foreground">Ask questions about legal documents, terminology, or get guidance on legal matters.</p>
-      </div>
-
       <div className="flex-1 flex flex-col items-center justify-between p-4 md:p-8 overflow-y-auto">
         <div className="w-full max-w-4xl flex flex-col flex-1 relative">
           
@@ -58,22 +50,22 @@ export function AIAssistant({ documentId }: { documentId?: string | null }) {
                </p>
                
                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                 <button onClick={() => document.getElementById('upload-input')?.click()} className="p-5 text-left bg-[#10141d] rounded-2xl border border-border/50 hover:border-[#4e8df5]/50 transition-all group flex flex-col items-start h-[160px]">
+                 <button onClick={() => document.getElementById('upload-input')?.click()} className="p-5 text-left bg-card rounded-2xl border border-border/50 hover:border-[#4e8df5]/50 transition-all group flex flex-col items-start h-[160px]">
                    <FileText className="w-6 h-6 text-[#4e8df5] mb-4" />
-                   <h4 className="font-semibold text-foreground mb-2">Analyze a Contract</h4>
+                   <h4 className="font-semibold text-foreground mb-2">{t.analyze_contract}</h4>
                    <p className="text-xs text-muted-foreground leading-relaxed">Upload and understand your legal documents</p>
                    <input type="file" id="upload-input" className="hidden" />
                  </button>
                  
-                 <button onClick={() => handleSend("Explain legal terminology")} className="p-5 text-left bg-[#10141d] rounded-2xl border border-border/50 hover:border-[#4e8df5]/50 transition-all group flex flex-col items-start h-[160px]">
+                 <button onClick={() => handleSend("Explain legal terminology")} className="p-5 text-left bg-card rounded-2xl border border-border/50 hover:border-[#4e8df5]/50 transition-all group flex flex-col items-start h-[160px]">
                    <Scale className="w-6 h-6 text-[#9333ea] mb-4" />
-                   <h4 className="font-semibold text-foreground mb-2">Legal Terminology</h4>
+                   <h4 className="font-semibold text-foreground mb-2">{t.legal_terminology}</h4>
                    <p className="text-xs text-muted-foreground leading-relaxed">Get clear explanations of legal terms</p>
                  </button>
                  
-                 <button onClick={() => handleSend("I need general legal advice")} className="p-5 text-left bg-[#10141d] rounded-2xl border border-border/50 hover:border-[#4e8df5]/50 transition-all group flex flex-col items-start h-[160px]">
+                 <button onClick={() => handleSend("I need general legal advice")} className="p-5 text-left bg-card rounded-2xl border border-border/50 hover:border-[#4e8df5]/50 transition-all group flex flex-col items-start h-[160px]">
                    <Lightbulb className="w-6 h-6 text-[#00F5D4] mb-4" />
-                   <h4 className="font-semibold text-foreground mb-2">Legal Advice</h4>
+                   <h4 className="font-semibold text-foreground mb-2">{t.legal_advice}</h4>
                    <p className="text-xs text-muted-foreground leading-relaxed">General guidance on legal matters</p>
                  </button>
                </div>
@@ -95,7 +87,7 @@ export function AIAssistant({ documentId }: { documentId?: string | null }) {
                       "max-w-[80%] p-4 rounded-3xl shadow-sm text-[15px] leading-relaxed",
                       msg.role === 'user'
                         ? "bg-[#4e8df5] text-white rounded-br-sm"
-                        : "bg-[#10141d] border border-border/50 text-foreground rounded-bl-sm"
+                        : "bg-card border border-border/50 text-foreground rounded-bl-sm"
                     )}>
                       {msg.content}
                     </div>
@@ -103,7 +95,7 @@ export function AIAssistant({ documentId }: { documentId?: string | null }) {
                 ))}
                 {isLoading && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex w-full justify-start">
-                    <div className="bg-[#10141d] border border-border/50 text-foreground rounded-3xl rounded-bl-sm p-4 w-fit flex items-center gap-2">
+                    <div className="bg-card border border-border/50 text-foreground rounded-3xl rounded-bl-sm p-4 w-fit flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-[#4e8df5] animate-pulse"></div>
                       <div className="w-2 h-2 rounded-full bg-[#4e8df5] animate-pulse delay-75"></div>
                       <div className="w-2 h-2 rounded-full bg-[#4e8df5] animate-pulse delay-150"></div>
@@ -126,20 +118,45 @@ export function AIAssistant({ documentId }: { documentId?: string | null }) {
           
           <form 
             onSubmit={(e) => { e.preventDefault(); handleSend(query); }}
-            className="w-full relative flex items-center bg-[#10141d] border border-border/50 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-[#4e8df5] transition-all group"
+            className="w-full relative flex items-center bg-card border border-border/50 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-[#4e8df5] transition-all group"
           >
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               disabled={isLoading}
-              placeholder="Ask a legal question..."
+              placeholder={t.ask_question}
               className="w-full px-5 py-4 bg-transparent border-none text-[15px] focus:ring-0 outline-none disabled:opacity-50"
             />
             <div className="flex gap-2 mr-3 shrink-0">
-               <button type="button" className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50">
+               <button type="button" onClick={() => document.getElementById('chat-upload-input')?.click()} className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50">
                  <Upload className="w-4 h-4" />
                </button>
+               <input 
+                 type="file" 
+                 id="chat-upload-input" 
+                 className="hidden" 
+                 onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setIsLoading(true);
+                    setMessages(prev => [...prev, { role: 'user', content: `[Uploaded File: ${file.name}]` }]);
+                    try {
+                      const res = await LegalAPI.uploadDocument(file);
+                      if (res && res[0]) {
+                         const newDocId = res[0].id;
+                         setLocalDocumentId(newDocId);
+                         setMessages(prev => [...prev, { role: 'ai', content: `I have received and processed **${file.name}**. You can now ask me specific questions about its contents!` }]);
+                         LegalAPI.analyzeDocument(newDocId).catch(console.error);
+                      }
+                    } catch(err) {
+                      setMessages(prev => [...prev, { role: 'ai', content: `Failed to process ${file.name}.` }]);
+                    } finally {
+                      setIsLoading(false);
+                      if (e.target) e.target.value = '';
+                    }
+                 }}
+               />
                <button
                  type="submit"
                  disabled={!query.trim() || isLoading}

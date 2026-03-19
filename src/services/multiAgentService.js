@@ -30,15 +30,17 @@ You understand the overall summary and general intent of the document. You can a
 
 const chatWithAgent = async (documentId, documentText, analysisJson, agentType, query) => {
   // 1. Check Cache First (Zero API Cost)
-  const cachedResponse = cacheManager.getCache(documentId, agentType, query);
-  if (cachedResponse) {
-    logger.info(`[Multi-Agent] CACHE HIT for ${agentType} on doc ${documentId}`);
-    return cachedResponse;
+  if (documentId && query) {
+    const cachedResponse = cacheManager.getCache(documentId, agentType, query);
+    if (cachedResponse) {
+      logger.info(`[Multi-Agent] CACHE HIT for ${agentType} on doc ${documentId}`);
+      return cachedResponse;
+    }
   }
 
   // 2. Compress Context (Massive Token Savings)
   // Instead of sending 50 pages of documentText, we send the dense RAG-lite summary.
-  const compressedContext = reduceContext(analysisJson, documentText);
+  const compressedContext = documentText ? reduceContext(analysisJson, documentText) : "No context document provided. Please answer the query based strictly on your persona's domain of expertise.";
 
   // 3. Select Agent Persona
   const systemPrompt = AGENT_PROMPTS[agentType];
@@ -72,7 +74,9 @@ const chatWithAgent = async (documentId, documentText, analysisJson, agentType, 
     const responseText = result.response.text();
     
     // 5. Save to Cache
-    cacheManager.setCache(documentId, agentType, query, responseText);
+    if (documentId && query) {
+      cacheManager.setCache(documentId, agentType, query, responseText);
+    }
 
     return responseText;
   } catch (error) {

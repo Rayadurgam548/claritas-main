@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { BookOpen, Search, Filter } from 'lucide-react';
+import { Book, Search, Filter, ChevronRight, Scale, Shield, AlertCircle } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
+import { translations } from '@/lib/translations';
 import { cn } from '@/app/lib/utils';
 
 const glossaryTerms = [
@@ -16,6 +18,8 @@ const glossaryTerms = [
 
 export function Glossary() {
   const [searchQuery, setSearchQuery] = useState('');
+  const { language } = useLanguage();
+  const t = translations[language];
   const [activeCategory, setActiveCategory] = useState('All');
 
   const categories = ['All', ...Array.from(new Set(glossaryTerms.map(t => t.category)))];
@@ -29,17 +33,9 @@ export function Glossary() {
   return (
     <div className="flex-1 flex flex-col h-full bg-background relative overflow-hidden">
       
-      <div className="px-8 py-6 border-b border-border/50 shrink-0">
-        <h2 className="text-2xl font-bold tracking-tight mb-1 text-foreground flex items-center gap-2">
-          <BookOpen className="w-6 h-6 text-[#4e8df5]" /> Legal Glossary
-        </h2>
-        <p className="text-sm text-muted-foreground">Search and understand common legal terminology.</p>
-      </div>
-
       <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-6">
         <div className="max-w-5xl mx-auto space-y-8">
           
-          {/* Search and Filters */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="relative w-full max-w-lg">
               <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -48,7 +44,7 @@ export function Glossary() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search legal terms..." 
-                className="w-full bg-[#10141d] border border-border/50 rounded-2xl pl-12 pr-4 py-4 text-[15px] text-foreground focus:ring-1 focus:ring-[#4e8df5] outline-none transition-all shadow-sm"
+                className="w-full bg-card border border-border/50 rounded-2xl pl-12 pr-4 py-4 text-[15px] text-foreground focus:ring-1 focus:ring-[#4e8df5] outline-none transition-all shadow-sm"
               />
             </div>
           </div>
@@ -62,7 +58,7 @@ export function Glossary() {
                    "px-4 py-1.5 text-sm font-medium rounded-full border transition-colors shadow-sm",
                    activeCategory === cat 
                     ? "bg-[#4e8df5] text-white border-[#4e8df5]" 
-                    : "border-border/50 bg-[#10141d] text-muted-foreground hover:text-foreground"
+                    : "border-border/50 bg-card text-muted-foreground hover:text-foreground"
                  )}
                >
                  {cat}
@@ -73,7 +69,7 @@ export function Glossary() {
           {/* Dictionary List */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
             {filteredTerms.map((item, i) => (
-              <div key={i} className="bg-[#10141d] border border-border/50 rounded-[2rem] p-6 hover:border-[#4e8df5]/30 transition-all shadow-sm group">
+              <div key={i} className="bg-card border border-border/50 rounded-[2rem] p-6 hover:border-[#4e8df5]/30 transition-all shadow-sm group">
                 <div className="flex items-start justify-between mb-4">
                   <h3 className="text-lg font-bold text-foreground group-hover:text-[#4e8df5] transition-colors">{item.term}</h3>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-muted/30 text-muted-foreground border border-border/30">
@@ -87,7 +83,7 @@ export function Glossary() {
             ))}
             
             {filteredTerms.length === 0 && (
-              <div className="col-span-full py-12 text-center text-muted-foreground bg-[#10141d] rounded-[2rem] border border-border/50">
+              <div className="col-span-full py-12 text-center text-muted-foreground bg-card rounded-[2rem] border border-border/50">
                 No legal terms found matching your search.
               </div>
             )}

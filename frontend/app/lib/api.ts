@@ -30,6 +30,7 @@ export interface DocumentData {
   filename: string;
   status: string;
   privacyMode: boolean;
+  category?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -80,6 +81,11 @@ export const LegalAPI = {
 
   chat: async (documentId: string, query: string): Promise<{ answer: string }> => {
     const response = await apiClient.post('/chat', { documentId, query });
+    return { answer: response.data.data.response };
+  },
+
+  agentChat: async (documentId: string, agentType: string, query: string): Promise<{ answer: string }> => {
+    const response = await apiClient.post('/agents/chat', { documentId, agentType, query });
     return { answer: response.data.data.response };
   },
 

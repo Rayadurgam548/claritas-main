@@ -57,17 +57,8 @@ export function ExpertPanel({ activeDocumentId }: ExpertPanelProps) {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-background relative overflow-y-auto">
-      <div className="max-w-[1200px] w-full mx-auto p-4 md:p-8 pt-10">
+      <div className="max-w-[1200px] w-full mx-auto p-4 md:p-8 pt-6">
         
-        <div className="mb-10 text-center space-y-3">
-          <div className="w-16 h-16 rounded-3xl bg-primary/20 flex flex-center mx-auto mb-4 border border-primary/30 shadow-glow">
-             <div className="m-auto"><Users className="w-8 h-8 text-primary" /></div>
-          </div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Multi-Agent Insights</h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-sm leading-relaxed">
-            Consult our panel of highly specialized AI agents. Each persona operates in strict domain isolation, utilizing compressed context retrieval for lightning-fast, highly accurate insights.
-          </p>
-        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {AGENTS.map((agent) => (

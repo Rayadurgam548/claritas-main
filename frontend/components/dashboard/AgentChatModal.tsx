@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { LegalAPI } from '@/app/lib/api';
 import { Bot, User, Send, X, Loader2, ShieldCheck, ShieldAlert, BadgeInfo } from 'lucide-react';
 import { cn } from '@/app/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,38 +40,14 @@ export function AgentChatModal({ documentId, agentId, agentName, agentIcon, agen
     setMessages(prev => [...prev, { role: 'user', content: userQuery }]);
     setIsLoading(true);
 
-    // Simulate network delay
-    setTimeout(() => {
-      const predefinedResponses: Record<string, string[]> = {
-        lawyer: [
-          "Based on the predefined problem statement: The indemnification clause holds severe one-sided liability. I strongly recommend negotiating a mutual cap.",
-          "Looking at the predefined legal problem: There is an unlimited liability risk hidden in Section 4. This is a severe legal trap."
-        ],
-        police: [
-          "Based on the predefined problem statement: The transaction structures vaguely mimic money laundering indicators. Proceed with extreme caution.",
-          "According to the problem statement: There are severe penal code violations if these funds are transferred implicitly. I see criminal exposure."
-        ],
-        municipal: [
-          "Based on the predefined problem statement: The property does not comply with local zoning ordinances for commercial use. This risks massive fines.",
-          "Looking at the predefined issue: This violates city code regulations regarding unpermitted structural modifications."
-        ],
-        bank: [
-          "Based on the predefined problem statement: The hidden interest rate compounds daily, leading to an incredibly high risk of loan default.",
-          "According to the financial breakdown: The ROI calculations are entirely unviable based on these payment terms. Massive financial exposure."
-        ],
-        core: [
-          "Based on the predefined problem statement: Overall, the document is heavily skewed against you. I recommend escalating this to the specialized agents.",
-          "Looking at the core metrics: This contract contains multiple hidden clauses that require your immediate attention."
-        ]
-      };
-
-      const responses = predefinedResponses[agentId] || predefinedResponses.core;
-      // Cycle through responses consistently based on array length to give variety
-      const mockResponse = responses[messages.length % responses.length];
-
-      setMessages(prev => [...prev, { role: 'agent', content: mockResponse }]);
+    try {
+      const response = await LegalAPI.agentChat(documentId || '', agentId, userQuery);
+      setMessages(prev => [...prev, { role: 'agent', content: response.answer }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'agent', content: 'An error occurred contacting the expert.' }]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (

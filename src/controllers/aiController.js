@@ -57,15 +57,20 @@ const chatDocumentation = async (req, res, next) => {
   try {
     const { documentId, query } = req.body;
     
-    if (!documentId || !query) {
-      return res.status(400).json({ success: false, error: 'documentId and query are required' });
+    if (!query) {
+      return res.status(400).json({ success: false, error: 'query is required' });
     }
 
-    const text = await storageService.getExtractedText(documentId);
-    let analysisJson = await storageService.getAnalysis(documentId) || {};
+    let text = '';
+    let analysisJson = {};
 
-    if (!text) {
-      return res.status(404).json({ success: false, error: 'Document not found' });
+    if (documentId) {
+      text = await storageService.getExtractedText(documentId);
+      analysisJson = await storageService.getAnalysis(documentId) || {};
+
+      if (!text) {
+        return res.status(404).json({ success: false, error: 'Document not found' });
+      }
     }
 
     const response = await aiService.chatWithDocument(text, analysisJson, query);

@@ -21,21 +21,26 @@ import { LegalAPI, UploadResponse, AnalysisResponse, ComparisonResponse, Documen
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, ChevronRight, AlertTriangle, Scale, Loader2, ArrowLeft, AlertCircle, RotateCcw, ShieldCheck, ShieldAlert, Upload, Search, Filter, Grid, List, Clock } from 'lucide-react';
 import { cn } from '@/app/lib/utils';
+import { LanguageProvider, useLanguage } from '@/context/LanguageContext';
+import { translations } from '@/lib/translations';
 
 type ViewState = 'upload' | 'analyzing' | 'single' | 'comparing';
 
-const dummyDocuments = [
-  { id: 'dummy-1', filename: 'Employment Contract 2026.pdf', status: 'analyzed', category: 'Contracts', privacyMode: false, createdAt: new Date().toISOString() },
-  { id: 'dummy-2', filename: 'Commercial Lease Agreement.docx', status: 'analyzed', category: 'Real Estate', privacyMode: false, createdAt: new Date().toISOString() },
-  { id: 'dummy-3', filename: 'Tax Assessment 2025.pdf', status: 'processing', category: 'Tax', privacyMode: false, createdAt: new Date().toISOString() },
-  { id: 'dummy-4', filename: 'Merger NDA.pdf', status: 'analyzed', category: 'Business', privacyMode: false, createdAt: new Date().toISOString() },
-  { id: 'dummy-5', filename: 'Court Summons.pdf', status: 'analyzed', category: 'Legal', privacyMode: false, createdAt: new Date().toISOString() },
-  { id: 'dummy-6', filename: 'Liability Insurance Policy.pdf', status: 'analyzed', category: 'Insurance', privacyMode: false, createdAt: new Date().toISOString() },
-];
+
 
 export default function Home() {
-  const router = useRouter();
+  return (
+    <LanguageProvider>
+      <HomeContent />
+    </LanguageProvider>
+  );
+}
 
+function HomeContent() {
+  const router = useRouter();
+  const { language } = useLanguage();
+  const t = translations[language];
+  
   const [currentNavTab, setCurrentNavTab] = useState<string>('dashboard');
   const [viewState, setViewState] = useState<ViewState>('upload');
   const [activeTab, setActiveTab] = useState<'analysis' | 'original'>('analysis');
@@ -152,47 +157,31 @@ export default function Home() {
     }
   };
 
-  const handleDeleteDocument = (docId: string) => {
-    if (activeDocument?.id === docId || secondDoc?.id === docId) {
-      resetView();
+  const handleDeleteDocument = async (docId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    try {
+      await LegalAPI.deleteDocument(docId);
+      setDocuments(prev => prev.filter(d => d.id !== docId));
+      if (activeDocument?.id === docId || secondDoc?.id === docId) {
+        resetView();
+      }
+    } catch (error) {
+      console.error("Failed to delete document", error);
     }
   };
 
   const renderContent = () => {
     switch (currentNavTab) {
       case 'dashboard':
-        return <DashboardOverview onNavigate={setCurrentNavTab} onUploadSuccess={handleUploadSuccess} />;
+        return <DashboardOverview onNavigate={setCurrentNavTab} onUploadSuccess={handleUploadSuccess} documents={documents} />;
       case 'documents':
-        const allDocs = [...documents, ...dummyDocuments as any];
+        const allDocs = documents;
         const filteredDocs = selectedCategory === 'All' ? allDocs : allDocs.filter(d => d.category === selectedCategory || (d.category === undefined && selectedCategory === 'Legal'));
         
         return (
-          <div className="flex-1 flex flex-col h-full relative">
-            {/* Top Navbar */}
-            <header className="h-16 border-b border-border bg-card flex items-center justify-between px-8 z-10 shrink-0 shadow-sm">
-              <div className="flex items-center gap-2">
-                {viewState !== 'upload' && (
-                  <button 
-                    onClick={resetView}
-                    className="mr-4 p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                  </button>
-                )}
-                <h2 className="text-xl font-semibold tracking-tight">
-                  {viewState === 'upload' ? 'Documents' : 
-                   viewState === 'analyzing' ? 'Analyzing...' :
-                   viewState === 'single' ? activeDocument?.filename :
-                   'Document Comparison'}
-                </h2>
-              </div>
-              
-              {(viewState === 'single' || viewState === 'comparing') && (
-                <LocalizationControls />
-              )}
-            </header>
-
-            <div className="flex-1 overflow-y-auto p-8 relative">
+          <div className="flex-1 flex flex-col h-full relative p-8">
             <AnimatePresence mode="wait">
               {viewState === 'upload' && (
                 <motion.div
@@ -204,7 +193,7 @@ export default function Home() {
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
-                      <h1 className="text-3xl font-bold tracking-tight text-white">Documents</h1>
+                      <h1 className="text-3xl font-bold tracking-tight text-foreground">{t.documents}</h1>
                       <p className="text-muted-foreground mt-1">Manage and organize your legal documents</p>
                     </div>
                     <button className="px-5 py-2.5 bg-[#4e8df5] text-white text-sm font-semibold rounded-lg hover:bg-[#4e8df5]/90 transition-all shadow-sm flex items-center gap-2">
@@ -219,17 +208,17 @@ export default function Home() {
                       <input 
                         type="text" 
                         placeholder="Search documents..." 
-                        className="w-full bg-[#10141d] border border-border/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:ring-1 focus:ring-[#4e8df5] outline-none transition-all"
+                        className="w-full bg-card border border-border/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:ring-1 focus:ring-[#4e8df5] outline-none transition-all"
                       />
                     </div>
                     <div className="flex items-center gap-2 w-full md:w-auto">
-                      <button className="flex items-center gap-2 px-4 py-2 border border-border/50 rounded-lg bg-[#10141d] text-sm font-medium hover:bg-muted/50 transition-colors">
+                      <button className="flex items-center gap-2 px-4 py-2 border border-border/50 rounded-lg bg-card text-sm font-medium hover:bg-muted/50 transition-colors">
                         <Filter className="w-4 h-4" /> Filter
                       </button>
-                      <button onClick={() => setViewMode('grid')} className={`p-2 border border-border/50 rounded-lg text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-muted text-foreground' : 'bg-[#10141d] text-muted-foreground hover:bg-muted/50'}`}>
+                      <button onClick={() => setViewMode('grid')} className={`p-2 border border-border/50 rounded-lg text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-muted text-foreground' : 'bg-card text-muted-foreground hover:bg-muted/50'}`}>
                         <Grid className="w-4 h-4" />
                       </button>
-                      <button onClick={() => setViewMode('list')} className={`p-2 border border-border/50 rounded-lg text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-muted text-foreground' : 'bg-[#10141d] text-muted-foreground hover:bg-muted/50'}`}>
+                      <button onClick={() => setViewMode('list')} className={`p-2 border border-border/50 rounded-lg text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-muted text-foreground' : 'bg-card text-muted-foreground hover:bg-muted/50'}`}>
                         <List className="w-4 h-4" />
                       </button>
                     </div>
@@ -237,9 +226,9 @@ export default function Home() {
 
                   {/* Tags */}
                   <div className="flex flex-wrap items-center gap-2">
-                     <button onClick={() => setSelectedCategory('All')} className={`px-3 py-1 text-xs font-semibold rounded-full border border-border/50 transition-colors ${selectedCategory === 'All' ? 'bg-[#4e8df5] text-white' : 'bg-[#10141d] text-muted-foreground hover:text-foreground'}`}>All</button>
+                     <button onClick={() => setSelectedCategory('All')} className={`px-3 py-1 text-xs font-semibold rounded-full border border-border/50 transition-colors ${selectedCategory === 'All' ? 'bg-[#4e8df5] text-white' : 'bg-card text-muted-foreground hover:text-foreground'}`}>All</button>
                      {['Contracts', 'Real Estate', 'Tax', 'Business', 'Legal', 'Insurance'].map(tag => (
-                       <button onClick={() => setSelectedCategory(tag)} key={tag} className={`px-3 py-1 text-xs font-medium rounded-full border border-border/50 transition-colors ${selectedCategory === tag ? 'bg-[#4e8df5] text-white' : 'bg-[#10141d] text-muted-foreground hover:text-foreground'}`}>{tag}</button>
+                       <button onClick={() => setSelectedCategory(tag)} key={tag} className={`px-3 py-1 text-xs font-medium rounded-full border border-border/50 transition-colors ${selectedCategory === tag ? 'bg-[#4e8df5] text-white' : 'bg-card text-muted-foreground hover:text-foreground'}`}>{tag}</button>
                      ))}
                   </div>
 
@@ -251,13 +240,13 @@ export default function Home() {
                   {/* Document Grid / List */}
                   <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" : "flex flex-col gap-4"}>
                     {filteredDocs.length > 0 ? filteredDocs.map((doc, i) => (
-                      <div key={doc.id} onClick={() => doc.id.startsWith('dummy') ? null : handleViewDocument(doc)} className={`bg-[#10141d] border border-border/50 rounded-2xl p-5 hover:border-[#4e8df5]/50 transition-colors cursor-pointer flex ${viewMode === 'list' ? 'flex-row items-center justify-between' : 'flex-col justify-between h-[200px]'}`}>
+                      <div key={doc.id} onClick={() => handleViewDocument(doc)} className={`bg-card border border-border/50 rounded-2xl p-5 hover:border-[#4e8df5]/50 transition-colors cursor-pointer flex ${viewMode === 'list' ? 'flex-row items-center justify-between' : 'flex-col justify-between h-[200px]'}`}>
                         <div className={viewMode === 'list' ? "flex items-center gap-4 w-1/2" : ""}>
                           <div className={`rounded-xl bg-[#142646] flex items-center justify-center shrink-0 ${viewMode === 'list' ? 'w-12 h-12' : 'w-10 h-10 mb-4'}`}>
                             <FileText className="w-5 h-5 text-[#4e8df5]" />
                           </div>
                           <div className="min-w-0">
-                            <h4 className="font-bold text-[15px] truncate text-white mb-1" title={doc.filename}>{doc.filename}</h4>
+                            <h4 className="font-bold text-[15px] truncate text-foreground mb-1" title={doc.filename}>{doc.filename}</h4>
                             <p className="text-xs text-muted-foreground uppercase">{doc.filename.split('.').pop()} • Document</p>
                           </div>
                         </div>
@@ -276,6 +265,7 @@ export default function Home() {
                           </div>
                           <div className="flex gap-2">
                              <span className="px-2 py-0.5 text-[10px] uppercase font-bold text-muted-foreground border border-border/50 rounded-full bg-background">{doc.category || 'Legal'}</span>
+                             <button onClick={(e) => handleDeleteDocument(doc.id, e)} className="px-2 py-0.5 text-[10px] uppercase font-bold text-danger border border-danger/20 rounded-full bg-danger/10 hover:bg-danger/20 transition-colors ml-auto">Delete</button>
                           </div>
                         </div>
                       </div>
@@ -505,7 +495,6 @@ export default function Home() {
               )}
             </AnimatePresence>
           </div>
-        </div>
         );
       case 'ai':
         return <AIAssistant documentId={activeDocument?.id} />;
@@ -520,13 +509,49 @@ export default function Home() {
     }
   };
 
+  // Helper for title
+  const displayTitle = currentNavTab === 'dashboard' ? t.dashboard : 
+                     currentNavTab === 'documents' ? (
+                       viewState === 'upload' ? t.documents : 
+                       viewState === 'analyzing' ? t.analyzing :
+                       viewState === 'single' ? (activeDocument?.filename || t.documents) :
+                       t.comparison
+                     ) : 
+                     currentNavTab === 'ai' ? t.ai_assistant :
+                     currentNavTab === 'expertPanel' ? t.expert_panel :
+                     currentNavTab === 'deadlines' ? t.deadlines :
+                     currentNavTab === 'glossary' ? t.glossary :
+                     'Claritas';
+
   return (
     <ThemeProvider defaultTheme="system" storageKey="lex-theme">
       <div className="flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-300">
         <Sidebar activeTab={currentNavTab} onTabChange={setCurrentNavTab} />
         
-        <main className="flex-1 flex flex-col min-w-0 bg-muted/10 relative">
-          {renderContent()}
+        <main className="flex-1 flex flex-col min-w-0 bg-muted/10 relative overflow-hidden">
+          {/* Global Top Bar */}
+          <header className="h-16 border-b border-border/50 bg-card/30 backdrop-blur-md flex items-center justify-between px-8 z-30 shrink-0 sticky top-0">
+            <div className="flex items-center gap-4">
+              {currentNavTab === 'documents' && viewState !== 'upload' && (
+                <button 
+                  onClick={resetView}
+                  className="p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+              )}
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                {displayTitle}
+              </h2>
+            </div>
+            <div className="flex items-center gap-4">
+               <LocalizationControls />
+            </div>
+          </header>
+
+          <div className="flex-1 overflow-y-auto">
+            {renderContent()}
+          </div>
         </main>
         
         {currentNavTab === 'documents' && <ChatSidebar documentId={activeDocument?.id} />}

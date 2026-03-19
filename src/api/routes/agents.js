@@ -25,18 +25,20 @@ router.post('/chat', rateLimiter, async (req, res, next) => {
   try {
     const { documentId, agentType, query } = req.body;
     
-    if (!documentId || !agentType || !query) {
-      return res.status(400).json({ success: false, error: 'documentId, agentType, and query are required' });
+    if (!agentType || !query) {
+      return res.status(400).json({ success: false, error: 'agentType and query are required' });
     }
 
-    // 1. Fetch document context
-    const text = await storageService.getExtractedText(documentId);
-    if (!text) {
-      return res.status(404).json({ success: false, error: 'Document not found' });
-    }
+    let text = '';
+    let analysisJson = {};
 
-    // 2. Fetch pre-calculated analysis (risks, summary, clauses)
-    const analysisJson = await storageService.getAnalysis(documentId);
+    if (documentId) {
+      text = await storageService.getExtractedText(documentId);
+      if (!text) {
+        return res.status(404).json({ success: false, error: 'Document not found' });
+      }
+      analysisJson = await storageService.getAnalysis(documentId) || {};
+    }
 
     // 3. Delegate to specific agent using MultiAgentService
     const response = await multiAgentService.chatWithAgent(

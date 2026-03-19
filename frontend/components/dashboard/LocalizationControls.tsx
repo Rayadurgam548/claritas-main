@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Volume2, VolumeX, Languages, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/app/lib/utils';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface LocalizationControlsProps {
   onLanguageChange?: (lang: string) => void;
@@ -11,13 +12,13 @@ interface LocalizationControlsProps {
 
 export function LocalizationControls({ onLanguageChange }: LocalizationControlsProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedLang, setSelectedLang] = useState('English');
+  const { language, setLanguage } = useLanguage();
   const [isPlaying, setIsPlaying] = useState(false);
 
   const languages = ['English', 'Hindi', 'Tamil', 'Telugu'];
 
   const handleLangSelect = (lang: string) => {
-    setSelectedLang(lang);
+    setLanguage(lang as any);
     setIsOpen(false);
     if (onLanguageChange) onLanguageChange(lang);
   };
@@ -38,7 +39,7 @@ export function LocalizationControls({ onLanguageChange }: LocalizationControlsP
           className="flex items-center gap-2 px-4 py-2 bg-card hover:bg-muted border border-border rounded-xl transition-colors text-sm font-medium"
         >
           <Languages className="w-4 h-4 text-muted-foreground" />
-          {selectedLang}
+          {language}
         </button>
 
         <AnimatePresence>
@@ -56,7 +57,7 @@ export function LocalizationControls({ onLanguageChange }: LocalizationControlsP
                   className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-muted flex items-center justify-between transition-colors"
                 >
                   {lang}
-                  {selectedLang === lang && <Check className="w-4 h-4 text-primary" />}
+                  {language === lang && <Check className="w-4 h-4 text-primary" />}
                 </button>
               ))}
             </motion.div>

@@ -85,7 +85,7 @@ export function VisualAnalytics({ analytics, simulation, timeline }: VisualAnaly
               <BarChart data={categoryData} layout="vertical" margin={{ left: -20, right: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-10} />
+                <YAxis dataKey="name" type="category" width={85} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-5} />
                 <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '8px', border: '1px solid var(--border)' }} />
                 <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={20}>
                   {categoryData.map((entry, index) => (
