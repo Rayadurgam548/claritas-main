@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #E0E1DD;
+  --foreground: #0A192F;
+  
+  /* Brand Colors */
+  --primary: #0A192F; 
+  --primary-foreground: #00F5D4;
+  --secondary: #ffffff; 
+  --secondary-foreground: #0A192F;
+  --accent: #7B2CBF;
+  
+  /* Semantic */
+  --success: #00F5D4;
+  --success-foreground: #0A192F;
+  --danger: #ff477e;
+  --danger-foreground: #ffffff;
+  --warning: #f59e0b;
+  
+  /* Layout */
+  --card: rgba(255, 255, 255, 0.7);
+  --card-foreground: #0A192F;
+  --border: rgba(10, 25, 47, 0.1);
+  --muted: rgba(10, 25, 47, 0.05);
+  --muted-foreground: #4a5568;
+  
+  /* Shadows */
+  --shadow-lex: 0 20px 25px -5px rgb(123 44 191 / 0.1), 0 8px 10px -6px rgb(0 245 212 / 0.1);
+  --glow: 0 0 20px rgba(0, 245, 212, 0.5);
+}
+
+.dark {
+  --background: #0A192F; /* Deep Blue */
+  --foreground: #E0E1DD; /* Soft White */
+  
+  --primary: #00F5D4; /* Neon Cyan */
+  --primary-foreground: #0A192F;
+  --secondary: rgba(123, 44, 191, 0.2); 
+  --secondary-foreground: #00F5D4;
+  --accent: #7B2CBF; /* Purple Glow */
+  
+  --card: rgba(10, 25, 47, 0.6);
+  --card-foreground: #E0E1DD;
+  --border: rgba(0, 245, 212, 0.2);
+  --muted: rgba(123, 44, 191, 0.1);
+  --muted-foreground: #94a3b8;
+
+  --shadow-lex: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+  --glow: 0 0 20px rgba(0, 245, 212, 0.5), 0 0 40px rgba(123, 44, 191, 0.3);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-warning: var(--warning);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --font-sans: var(--font-sans);
+  
+  --shadow-lex: var(--shadow-lex);
+  --shadow-glow: var(--glow);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism utilities */
+.glass {
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
+.glow-text {
+  text-shadow: 0 0 10px var(--primary), 0 0 20px var(--accent);
+}
