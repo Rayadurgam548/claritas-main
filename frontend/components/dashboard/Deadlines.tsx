@@ -96,8 +96,11 @@ export function Deadlines() {
                             <div className={cn(
                               "w-10 h-10 flex flex-col items-center justify-center rounded-2xl text-[15px] font-medium transition-all cursor-pointer hover:bg-muted/50 relative",
                               dayDeadlines.length > 0 ? "bg-card/80 border shadow-sm" : "text-foreground",
-                              dayDeadlines.length > 0 && hasHigh ? "border-danger/30 text-danger" : dayDeadlines.length > 0 && hasMedium ? "border-warning/30 text-warning" : dayDeadlines.length > 0 ? "border-[#4e8df5]/30 text-[#4e8df5]" : "",
-                              isToday ? "bg-[#4e8df5] text-white" : ""
+                              dayDeadlines.length > 0 && hasHigh ? "bg-danger/10 border-danger/30 text-danger" : 
+                              dayDeadlines.length > 0 && hasMedium ? "bg-warning/10 border-warning/30 text-warning" : 
+                              dayDeadlines.length > 0 && hasLow ? "bg-success/10 border-success/30 text-success" : 
+                              dayDeadlines.length > 0 ? "border-[#4e8df5]/30 text-[#4e8df5]" : "",
+                              isToday ? "bg-[#4e8df5] text-white shadow-glow" : ""
                             )}>
                               {dateNum}
                             </div>
@@ -136,9 +139,10 @@ export function Deadlines() {
                 const diff = differenceInDays(item.date, new Date());
                 const leftStr = diff === 0 ? 'Today' : diff < 0 ? `${Math.abs(diff)} days ago` : `${diff} days left`;
                 const pColor = item.priority === 'High' ? 'text-danger' : item.priority === 'Medium' ? 'text-warning' : 'text-success';
+                const pBg = item.priority === 'High' ? 'bg-danger/5 border-danger/20' : item.priority === 'Medium' ? 'bg-warning/5 border-warning/20' : 'bg-success/5 border-success/20';
 
                 return (
-                  <div key={item.id} className="p-5 rounded-2xl bg-card border border-border/50 hover:border-border transition-colors group relative shadow-sm">
+                  <div key={item.id} className={cn("p-5 rounded-2xl border transition-colors group relative shadow-sm", pBg)}>
                     
                     <div 
                       className="absolute right-4 top-4 text-muted-foreground hover:text-danger cursor-pointer p-1 transition-colors"

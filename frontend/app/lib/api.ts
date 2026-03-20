@@ -69,8 +69,8 @@ export const LegalAPI = {
     return response.data;
   },
 
-  analyzeDocument: async (id: string): Promise<AnalysisResponse> => {
-    const response = await apiClient.post(`/analyze/${id}`);
+  analyzeDocument: async (id: string, language: string = 'English'): Promise<AnalysisResponse> => {
+    const response = await apiClient.post(`/analyze/${id}`, { language });
     return response.data.data;
   },
 
@@ -79,8 +79,9 @@ export const LegalAPI = {
     return response.data.data;
   },
 
-  chat: async (documentId: string, query: string): Promise<{ answer: string }> => {
-    const response = await apiClient.post('/chat', { documentId, query });
+  chat: async (documentId: string | null, query: string, mode: 'general' | 'document' | 'terminology' = 'document', language: string = 'English'): Promise<{ answer: string }> => {
+    const conciseQuery = `(Please be concise) ${query}`;
+    const response = await apiClient.post('/chat', { documentId, query: conciseQuery, mode, language });
     return { answer: response.data.data.response };
   },
 

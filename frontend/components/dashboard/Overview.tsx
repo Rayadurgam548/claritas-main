@@ -2,9 +2,9 @@
 
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar
+  BarChart, Bar, Cell, PieChart, Pie
 } from 'recharts';
-import { ArrowRight, MoreHorizontal, Sparkles, AlertTriangle, Calendar as CalendarIcon, Lightbulb, FileText, Search, Activity, ShieldAlert } from 'lucide-react';
+import { ArrowRight, MoreHorizontal, Sparkles, AlertTriangle, Calendar as CalendarIcon, Lightbulb, FileText, Search, Activity, ShieldAlert, TrendingUp, Clock, Plus, Scale } from 'lucide-react';
 import { cn } from '@/app/lib/utils';
 import { LexDropZone } from './LexDropZone';
 import { useState, useEffect } from 'react';
@@ -12,43 +12,28 @@ import { getUser } from '@/app/lib/auth';
 import { format, differenceInDays } from 'date-fns';
 import { useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/lib/translations';
+import { UploadResponse } from '@/app/lib/api';
+import { RobotAvatar } from './RobotAvatar';
 
-const activityData = [
-  { name: 'Mon', queries: 8, documents: 2 },
-  { name: 'Tue', queries: 19, documents: 5 },
-  { name: 'Wed', queries: 15, documents: 3 },
-  { name: 'Thu', queries: 21, documents: 6 },
-  { name: 'Fri', queries: 12, documents: 4 },
-  { name: 'Sat', queries: 6, documents: 1 },
-  { name: 'Sun', queries: 5, documents: 0 },
-];
+const COLORS = ['#4e8df5', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899'];
 
-const monthlyActivityData = [
-  { name: 'Week 1', queries: 45, documents: 14 },
-  { name: 'Week 2', queries: 62, documents: 18 },
-  { name: 'Week 3', queries: 38, documents: 9 },
-  { name: 'Week 4', queries: 86, documents: 20 },
-];
-
-const categoryData = [
-  { name: 'Contracts', value: 35 },
-  { name: 'Real Estate', value: 28 },
-  { name: 'Employment', value: 19 },
-  { name: 'NDA', value: 14 },
-  { name: 'Other', value: 7 },
-];
-
-export function DashboardOverview({ onNavigate, onUploadSuccess, documents = [] }: { onNavigate?: (tab: string) => void, onUploadSuccess?: (res: any[]) => void, documents?: any[] }) {
+export function DashboardOverview({ onNavigate, onUploadSuccess, documents = [] }: { onNavigate?: (tab: string) => void, onUploadSuccess: (res: UploadResponse[]) => void, documents?: any[] }) {
   const [user, setUser] = useState<any>(null);
+  const [avatarId, setAvatarId] = useState(1);
   const [activityView, setActivityView] = useState<'week' | 'month'>('week');
   const [deadlinesCount, setDeadlinesCount] = useState(0);
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<any[]>([]);
-  const [aiQueriesCount, setAiQueriesCount] = useState(128); // Can be static or also localstorage
+  const [aiQueriesCount, setAiQueriesCount] = useState(0); 
+  const [recentQueries, setRecentQueries] = useState<any[]>([]);
   const { language } = useLanguage();
   const t = translations[language];
 
   useEffect(() => {
     setUser(getUser());
+    const savedAvatar = localStorage.getItem('lex_avatar_id');
+    if (savedAvatar) {
+      setAvatarId(parseInt(savedAvatar));
+    }
     
     // Check localStorage for deadlines
     const storedDeadlines = localStorage.getItem('lex_deadlines');
@@ -68,245 +53,342 @@ export function DashboardOverview({ onNavigate, onUploadSuccess, documents = [] 
         setUpcomingDeadlines([]);
       }
     } else {
-      // Default initial fallback if not visited yet
+      // Default initial fallback
       setDeadlinesCount(4);
       setUpcomingDeadlines([
-        { id: 1, title: 'Contract Renewal', date: new Date(Date.now() + 5*86400000), priority: 'High' },
-        { id: 2, title: 'Lease Payment', date: new Date(Date.now() + 12*86400000), priority: 'Medium' },
-        { id: 3, title: 'Tax Filing Deadline', date: new Date(Date.now() + 26*86400000), priority: 'Low' }
+        { id: 1, title: t.mock_deadline_1, date: new Date(Date.now() + 5*86400000), priority: 'High' },
+        { id: 2, title: t.mock_deadline_2, date: new Date(Date.now() + 12*86400000), priority: 'Medium' },
+        { id: 3, title: t.mock_deadline_3, date: new Date(Date.now() + 26*86400000), priority: 'Low' }
       ]);
     }
-  }, []);
-  
+    
+    // Check localStorage for AI Queries
+    const storedQueries = localStorage.getItem('lex_queries');
+    if (storedQueries) {
+      try {
+        const parsed = JSON.parse(storedQueries);
+        setAiQueriesCount(parsed.length);
+        setRecentQueries(parsed.slice(-2).reverse());
+      } catch (e) {
+        setAiQueriesCount(0);
+      }
+    }
+  }, [t]);
+
+  // Compute Categories from documents
+  const categoryChartData = documents.reduce((acc: any[], doc) => {
+    const cat = doc.category || 'Other';
+    const existing = acc.find(item => item.name === cat);
+    if (existing) {
+      existing.value += 1;
+    } else {
+      acc.push({ name: cat, value: 1 });
+    }
+    return acc;
+  }, []).sort((a, b) => b.value - a.value);
+
+  // Simple activity calculation based on actual data
+  const dynamicActivityData = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
+    // Current day index (0-6)
+    const now = new Date();
+    const currentDayOfWeek = now.getDay();
+    
+    // Find how many days ago this "day" was in the current week
+    // Day of week starts at Sunday (0).
+    const daysAgo = (currentDayOfWeek - index + 7) % 7;
+    const targetDate = new Date();
+    targetDate.setDate(now.getDate() - daysAgo);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(targetDate.getDate() + 1);
+
+    // Count documents created on this day
+    const docCount = documents.filter(doc => {
+      const created = new Date(doc.createdAt);
+      return created >= targetDate && created < nextDay;
+    }).length;
+
+    // Count queries from localStorage (if they have timestamps)
+    let queryCount = 0;
+    const stored = localStorage.getItem('lex_queries');
+    if (stored) {
+      try {
+        const queries = JSON.parse(stored);
+        queryCount = queries.filter((q: any) => {
+          // If it has a timestamp, use it normally
+          if (q.timestamp) {
+            const qTime = new Date(q.timestamp);
+            return qTime >= targetDate && qTime < nextDay;
+          }
+          // Fallback: If no timestamp but it's "Today" in the chart, include it
+          // This ensures existing queries (from before the fix) show up on the "Today" bar
+          if (day === ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][currentDayOfWeek]) {
+            return true;
+          }
+          return false;
+        }).length;
+      } catch (e) {}
+    }
+
+    return { 
+      name: day,
+      isToday: day === ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][currentDayOfWeek],
+      queries: queryCount,
+      documents: docCount
+    };
+  });
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-card/95 backdrop-blur-md border border-border/50 p-4 rounded-2xl shadow-xl space-y-2 min-w-[150px]">
+          <p className="text-sm font-bold text-foreground flex items-center justify-between gap-4">
+            {label} 
+            {data.isToday && (
+              <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-semibold border border-primary/10">
+                Today
+              </span>
+            )}
+          </p>
+          <div className="space-y-1 mt-2">
+            {payload.map((entry: any, index: number) => (
+              <div key={index} className="flex items-center justify-between gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }}></div>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">{entry.name}:</span>
+                </div>
+                <span className="text-sm font-bold text-foreground">{entry.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="flex-1 flex flex-col h-full bg-background relative overflow-y-auto">
-      <div className="max-w-[1400px] w-full mx-auto p-4 md:p-8 space-y-8">
-
-        <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-end">
+    <div className="flex-1 p-8 space-y-8 animate-in fade-in duration-500">
+      {/* Header section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <RobotAvatar id={avatarId} className="w-16 h-16 shadow-lg border-2 border-primary/20" />
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Welcome back, {user?.name?.split(' ')[0] || 'there'}</h1>
-            <p className="text-muted-foreground">Here's what's happening with your legal matters today.</p>
-          </div>
-          <div className="flex gap-3">
-             <button onClick={() => onNavigate && onNavigate('ai')} className="px-5 py-2.5 bg-card border border-border/50 text-foreground text-sm font-semibold rounded-lg hover:bg-muted/50 transition-all shadow-sm flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#4e8df5]" /> Ask AI
-             </button>
-             <button onClick={() => {
-                const dropzone = document.querySelector('.lex-drop-zone') as HTMLElement;
-                if (dropzone) dropzone.scrollIntoView({ behavior: 'smooth' });
-             }} className="px-5 py-2.5 bg-[#4e8df5] text-white text-sm font-semibold rounded-lg hover:bg-[#4e8df5]/90 transition-all shadow-sm">
-                Upload Document
-             </button>
+            <h1 className="text-3xl font-bold text-foreground">
+              {t.welcome_message}, {user?.name || 'Counsel'}!
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {t.dashboard_subtitle || 'Here is what is happening with your legal operations today.'}
+            </p>
           </div>
         </div>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => onNavigate?.('documents')}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-xl flex items-center gap-2 font-semibold shadow-glow hover:scale-105 transition-all"
+          >
+            <Plus className="w-4 h-4" /> {t.upload_document}
+          </button>
+        </div>
+      </div>
 
-        {/* Hero Upload Zone */}
-        <div className="lex-drop-zone bg-card rounded-[2rem] p-6 border border-border/50 shadow-sm">
-           <LexDropZone onUploadSuccess={onUploadSuccess || (() => {})} />
+      {/* Stats row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-sm hover:border-primary/20 transition-colors group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-primary/10 text-primary rounded-2xl group-hover:scale-110 transition-transform">
+              <FileText className="w-6 h-6" />
+            </div>
+            <span className="flex items-center gap-1 text-xs font-bold text-success bg-success/10 px-2 py-1 rounded-full">
+              <TrendingUp className="w-3 h-3" /> +12%
+            </span>
+          </div>
+          <p className="text-muted-foreground text-sm font-medium">{t.total_docs}</p>
+          <h3 className="text-3xl font-bold mt-1">{documents.length}</h3>
         </div>
 
-        {/* Top Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-           <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm flex flex-col cursor-pointer hover:border-[#4e8df5]/50 transition-colors" onClick={() => onNavigate?.('documents')}>
-              <div className="flex items-center gap-3 mb-4 text-muted-foreground">
-                 <FileText className="w-5 h-5" /> <span className="text-sm font-semibold">{t.total_docs}</span>
-              </div>
-              <div className="text-3xl font-bold text-foreground mb-1">{documents.length}</div>
-              <div className="text-xs text-[#22c55e] font-semibold flex items-center gap-1">+ {documents.length > 0 ? '1' : '0'} this week</div>
-           </div>
-           
-           <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm flex flex-col cursor-pointer hover:border-[#f59e0b]/50 transition-colors" onClick={() => onNavigate?.('deadlines')}>
-              <div className="flex items-center gap-3 mb-4 text-muted-foreground">
-                 <CalendarIcon className="w-5 h-5" /> <span className="text-sm font-semibold">{t.upcoming_deadlines}</span>
-              </div>
-              <div className="text-3xl font-bold text-foreground mb-1">{deadlinesCount}</div>
-              <div className="text-xs text-warning font-semibold flex items-center gap-1">Tracked custom dates</div>
-           </div>
-           
-           <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm flex flex-col cursor-pointer hover:border-[#4e8df5]/50 transition-colors" onClick={() => onNavigate?.('ai')}>
-              <div className="flex items-center gap-3 mb-4 text-muted-foreground">
-                 <Activity className="w-5 h-5" /> <span className="text-sm font-semibold">{t.ai_queries}</span>
-              </div>
-              <div className="text-3xl font-bold text-foreground mb-1">{aiQueriesCount}</div>
-              <div className="text-xs text-primary font-semibold flex items-center gap-1">12 responses today</div>
-           </div>
-           
-           <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm flex flex-col cursor-pointer hover:border-danger/50 transition-colors" onClick={() => onNavigate?.('documents')}>
-              <div className="flex items-center gap-3 mb-4 text-muted-foreground">
-                 <ShieldAlert className="w-5 h-5" /> <span className="text-sm font-semibold">Risk Alerts</span>
-              </div>
-              <div className="text-3xl font-bold text-foreground mb-1">4</div>
-              <div className="text-xs text-danger font-semibold flex items-center gap-1">1 high, 3 medium</div>
-           </div>
+        <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-sm hover:border-warning/20 transition-colors group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-warning/10 text-warning rounded-2xl group-hover:scale-110 transition-transform">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <span className="flex items-center gap-1 text-xs font-bold text-warning bg-warning/10 px-2 py-1 rounded-full">
+              <Activity className="w-3 h-3" /> Live
+            </span>
+          </div>
+          <p className="text-muted-foreground text-sm font-medium">{t.ai_queries}</p>
+          <h3 className="text-3xl font-bold mt-1">{aiQueriesCount}</h3>
         </div>
-        
-        {/* Top Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* Weekly Activity Area Chart */}
-          <div className="bg-card rounded-[2rem] p-6 border border-border/50 shadow-sm relative overflow-hidden">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-bold tracking-tight text-foreground">{activityView === 'week' ? 'Weekly' : 'Monthly'} Activity</h3>
-              <div className="flex bg-muted/30 p-1 rounded-xl border border-border/50">
-                <button 
+
+        <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-sm hover:border-danger/20 transition-colors group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-danger/10 text-danger rounded-2xl group-hover:scale-110 transition-transform">
+              <CalendarIcon className="w-6 h-6" />
+            </div>
+            <span className="flex items-center gap-1 text-xs font-bold text-danger bg-danger/10 px-2 py-1 rounded-full">
+              <ShieldAlert className="w-3 h-3" /> {deadlinesCount > 2 ? 'Action' : 'Normal'}
+            </span>
+          </div>
+          <p className="text-muted-foreground text-sm font-medium">{t.deadlines}</p>
+          <h3 className="text-3xl font-bold mt-1">{deadlinesCount}</h3>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Col: Upload & Activity */}
+        <div className="lg:col-span-2 space-y-8">
+          <div className="bg-gradient-to-br from-primary/5 to-transparent border border-primary/10 rounded-3xl p-8 overflow-hidden relative">
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+               <div className="flex-1 space-y-4">
+                 <h2 className="text-2xl font-bold">{t.quick_analyze}</h2>
+                 <p className="text-muted-foreground text-sm">
+                   {t.upload_desc}
+                 </p>
+                 <div className="flex flex-wrap gap-2 pt-2">
+                   <div className="bg-background/50 backdrop-blur-sm border border-border/50 px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5"><ShieldAlert className="w-3 h-3 text-danger" /> {t.risk_guard}</div>
+                   <div className="bg-background/50 backdrop-blur-sm border border-border/50 px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-warning" /> {t.ai_summary}</div>
+                   <div className="bg-background/50 backdrop-blur-sm border border-border/50 px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5"><Scale className="w-3 h-3 text-primary" /> {t.case_law}</div>
+                 </div>
+               </div>
+               <div className="w-full md:w-80 shrink-0">
+                 <LexDropZone onUploadSuccess={onUploadSuccess} />
+               </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-sm">
+             <div className="flex items-center justify-between mb-6">
+               <h3 className="text-lg font-bold">{t.analysis_activity || 'System Activity'}</h3>
+               <div className="flex bg-muted p-1 rounded-lg">
+                 <button 
                   onClick={() => setActivityView('week')}
-                  className={`px-5 py-1.5 text-xs font-semibold rounded-lg transition-all shadow-sm ${activityView === 'week' ? 'bg-[#27272a] text-white' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Week
-                </button>
-                <button 
+                  className={cn("px-3 py-1 text-xs font-semibold rounded-md transition-all", activityView === 'week' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                 >
+                   {t.week}
+                 </button>
+                 <button 
                   onClick={() => setActivityView('month')}
-                  className={`px-5 py-1.5 text-xs font-semibold rounded-lg transition-all shadow-sm ${activityView === 'month' ? 'bg-[#27272a] text-white' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Month
-                </button>
-              </div>
-            </div>
-            
-            <div className="h-[280px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={activityView === 'week' ? activityData : monthlyActivityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4e8df5" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#4e8df5" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorDocs" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.02)" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickCount={5} domain={[0, 24]} />
-                  <RechartsTooltip 
-                    contentStyle={{ backgroundColor: '#10141d', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}
-                    itemStyle={{ color: '#fff', fontWeight: 600 }}
-                  />
-                  <Area type="monotone" dataKey="queries" stroke="#4e8df5" strokeWidth={3} fillOpacity={1} fill="url(#colorArea)" />
-                  <Area type="monotone" dataKey="documents" stroke="#22c55e" strokeWidth={3} fillOpacity={1} fill="url(#colorDocs)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-            
-            <div className="flex items-center justify-center gap-6 mt-4">
-               <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#4e8df5]"></div><span className="text-xs text-muted-foreground font-medium">AI Queries</span></div>
-               <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#22c55e]"></div><span className="text-xs text-muted-foreground font-medium">Documents</span></div>
-            </div>
-          </div>
-
-          {/* Document Categories Bar Chart */}
-          <div className="bg-card rounded-[2rem] p-6 border border-border/50 shadow-sm relative overflow-hidden">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-bold tracking-tight text-foreground">Document Categories</h3>
-              <button className="text-muted-foreground hover:text-foreground"><MoreHorizontal className="w-5 h-5" /></button>
-            </div>
-            
-            <div className="h-[280px] w-[95%]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.02)" />
-                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickCount={5} domain={[0, 36]} />
-                  <YAxis dataKey="name" type="category" width={85} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={-5} />
-                  <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#10141d', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={28} fill="#4e8df5" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          
-        </div>
-
-        {/* Bottom Three Columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Upcoming Deadlines */}
-          <div className="bg-card rounded-[2rem] p-6 border border-border/50 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold">{t.upcoming_deadlines}</h3>
-              <button onClick={() => onNavigate?.('deadlines')} className="text-sm font-semibold text-[#4e8df5] flex items-center gap-1 hover:underline">{t.view_all} <ArrowRight className="w-4 h-4" /></button>
-            </div>
-            <div className="space-y-4">
-               {upcomingDeadlines.length > 0 ? upcomingDeadlines.map((dl) => {
-                 const diff = differenceInDays(dl.date, new Date());
-                 const isHigh = dl.priority === 'High';
-                 const isMed = dl.priority === 'Medium';
-                 
-                 return (
-                   <div key={dl.id} className={cn("p-4 rounded-2xl border flex gap-4 items-start", 
-                     isHigh ? "bg-danger/10 border-danger/20" : isMed ? "bg-warning/10 border-warning/20" : "bg-success/10 border-success/20")}>
-                     {isHigh ? (
-                       <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
-                     ) : (
-                       <CalendarIcon className={cn("w-5 h-5 shrink-0 mt-0.5", isMed ? "text-warning" : "text-success")} />
-                     )}
-                     <div className="flex-1 min-w-0">
-                       <h4 className="font-semibold text-foreground mb-1 text-sm truncate">{dl.title}</h4>
-                       <p className="text-xs text-muted-foreground">{format(dl.date, 'MMM d, yyyy')}</p>
-                     </div>
-                     <div className={cn("w-8 h-8 rounded-full border flex items-center justify-center shrink-0 font-bold text-xs", 
-                        isHigh ? "border-danger/30 text-danger bg-danger/10" : isMed ? "border-warning/30 text-warning bg-warning/10" : "border-success/30 text-success bg-success/10")}>
-                        {diff < 0 ? 'Due' : `${diff}d`}
-                     </div>
-                   </div>
-                 );
-               }) : (
-                 <div className="p-6 text-center text-muted-foreground">No upcoming deadlines logged.</div>
-               )}
-            </div>
-          </div>
-
-          {/* Recent AI Queries */}
-          <div className="bg-card rounded-[2rem] p-6 border border-border/50 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold">{t.ai_queries}</h3>
-              <button onClick={() => onNavigate?.('ai')} className="text-sm font-semibold text-[#4e8df5] flex items-center gap-1 hover:underline">{t.new_chat} <ArrowRight className="w-4 h-4" /></button>
-            </div>
-            <div className="space-y-4">
-               <div className="p-4 rounded-2xl bg-muted/20 border border-border/50 flex gap-4 items-start">
-                 <Sparkles className="w-5 h-5 text-[#4e8df5] shrink-0 mt-0.5" />
-                 <div>
-                   <h4 className="font-semibold text-foreground mb-1 text-sm leading-tight text-foreground/90">What are the key clauses in my employment contract?</h4>
-                   <p className="text-xs text-muted-foreground">10 min ago</p>
-                 </div>
+                  className={cn("px-3 py-1 text-xs font-semibold rounded-md transition-all", activityView === 'month' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                 >
+                   {t.month}
+                 </button>
                </div>
-               
-               <div className="p-4 rounded-2xl bg-muted/20 border border-border/50 flex gap-4 items-start">
-                 <Sparkles className="w-5 h-5 text-[#4e8df5] shrink-0 mt-0.5" />
-                 <div>
-                   <h4 className="font-semibold text-foreground mb-1 text-sm leading-tight text-foreground/90">Explain the termination clause in my lease agreement</h4>
-                   <p className="text-xs text-muted-foreground">2 hours ago</p>
-                 </div>
-               </div>
-            </div>
-          </div>
-
-          {/* Quick Tips */}
-          <div className="bg-card rounded-[2rem] p-6 border border-border/50 shadow-sm relative overflow-hidden">
-             <div className="flex items-center justify-between mb-6 relative z-10">
-               <h3 className="text-lg font-bold">Quick Tips</h3>
-               <Lightbulb className="w-5 h-5 text-[#f59e0b]" />
              </div>
              
-             <div className="space-y-5 relative z-10">
-               <div className="flex gap-4 items-start">
-                 <div className="w-6 h-6 rounded-full bg-[#27272a] text-[#f59e0b] flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 border border-[#f59e0b]/30">1</div>
-                 <div>
-                   <h4 className="font-semibold text-sm text-foreground mb-1">Upload contracts for instant analysis</h4>
-                   <p className="text-xs text-muted-foreground leading-relaxed">Our AI identifies key clauses and risks automatically</p>
-                 </div>
-               </div>
-               
-               <div className="flex gap-4 items-start">
-                 <div className="w-6 h-6 rounded-full bg-[#27272a] text-[#f59e0b] flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 border border-[#f59e0b]/30">2</div>
-                 <div>
-                   <h4 className="font-semibold text-sm text-foreground mb-1">Set deadline reminders</h4>
-                   <p className="text-xs text-muted-foreground leading-relaxed">Never miss important dates with smart notifications</p>
-                 </div>
-               </div>
+             <div className="h-[300px] w-full">
+               <ResponsiveContainer width="100%" height="100%">
+                 <BarChart data={dynamicActivityData}>
+                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                   <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)', radius: 8 }} content={<CustomTooltip />} />
+                   <Bar dataKey="queries" name={t.ai_queries_label || 'Queries'} fill="#4e8df5" radius={[4, 4, 0, 0]} barSize={20} />
+                   <Bar dataKey="documents" name={t.documents_label || 'Docs'} fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={20} />
+                 </BarChart>
+               </ResponsiveContainer>
              </div>
           </div>
+        </div>
 
+        {/* Right Col: Categories & Deadlines */}
+        <div className="space-y-8">
+          <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-sm">
+            <h3 className="text-lg font-bold mb-6">{t.category_distribution}</h3>
+            {categoryChartData.length > 0 ? (
+              <>
+                <div className="h-[200px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {categoryChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                   {categoryChartData.map((item, i) => (
+                     <div key={i} className="flex items-center gap-2">
+                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                       <span className="text-xs font-semibold truncate">{item.name} ({item.value})</span>
+                     </div>
+                   ))}
+                </div>
+              </>
+            ) : (
+              <div className="h-[200px] flex flex-col items-center justify-center text-center space-y-2 opacity-60">
+                <Search className="w-10 h-10 text-muted-foreground" />
+                <p className="text-sm font-medium">{t.no_docs_yet}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold">{t.upcoming_deadlines || 'Deadlines'}</h3>
+              <button onClick={() => onNavigate?.('deadlines')} className="text-primary hover:text-primary/80"><ArrowRight className="w-5 h-5" /></button>
+            </div>
+            
+            <div className="space-y-4">
+              {upcomingDeadlines.length > 0 ? upcomingDeadlines.map((deadline) => (
+                <div key={deadline.id} className="p-4 rounded-2xl bg-muted/30 border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer group">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={cn("text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border", 
+                      deadline.priority === 'High' ? "bg-danger/10 text-danger border-danger/20" :
+                      deadline.priority === 'Medium' ? "bg-warning/10 text-warning border-warning/20" : "bg-success/10 text-success border-success/20"
+                    )}>
+                      {deadline.priority}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> {format(deadline.date, 'MMM dd')}
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-bold group-hover:text-primary transition-colors">{deadline.title}</h4>
+                </div>
+              )) : (
+                <div className="py-8 text-center text-muted-foreground text-sm italic">
+                  {t.no_deadlines}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-sm bg-gradient-to-tr from-[#27272a] to-[#18181b] text-white">
+            <div className="flex items-center gap-2 mb-4">
+              <Lightbulb className="w-5 h-5 text-[#f59e0b]" />
+              <h3 className="text-lg font-bold">Pro Legal Tips</h3>
+            </div>
+            
+            <div className="space-y-5">
+               <div className="flex gap-4 items-start">
+                <div className="w-6 h-6 rounded-full bg-white/10 text-[#f59e0b] flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 border border-[#f59e0b]/30">1</div>
+                <div>
+                  <h4 className="font-semibold text-sm mb-1">{t.tip_1_title}</h4>
+                  <p className="text-xs text-white/60 leading-relaxed">{t.tip_1_desc}</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 items-start">
+                <div className="w-6 h-6 rounded-full bg-white/10 text-[#f59e0b] flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 border border-[#f59e0b]/30">2</div>
+                <div>
+                  <h4 className="font-semibold text-sm mb-1">{t.tip_2_title}</h4>
+                  <p className="text-xs text-white/60 leading-relaxed">{t.tip_2_desc}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

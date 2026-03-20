@@ -6,6 +6,8 @@ import { MessageSquare, Send, Sparkles, Loader2, Info } from 'lucide-react';
 import { cn } from '@/app/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
+import { useLanguage } from '@/context/LanguageContext';
+import { translations } from '@/lib/translations';
 
 interface ChatSidebarProps {
   documentId?: string | null;
@@ -17,10 +19,13 @@ interface Message {
 }
 
 export function ChatSidebar({ documentId }: ChatSidebarProps) {
+  const { language } = useLanguage();
+  const t = translations[language];
+
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'ai',
-      content: 'Hello! I am your AI Legal Assistant. Ask me anything about the document.'
+      content: t.welcome_chat
     }
   ]);
   const [query, setQuery] = useState('');
@@ -30,16 +35,16 @@ export function ChatSidebar({ documentId }: ChatSidebarProps) {
     setMessages([
       {
         role: 'ai',
-        content: 'Hello! I am your AI Legal Assistant. Ask me anything about the document.'
+        content: t.welcome_chat
       }
     ]);
     setQuery('');
-  }, [documentId]);
+  }, [documentId, t.welcome_chat]);
 
   const predefinedQuestions = [
-    "What are my termination rights?",
-    "Are there any hidden fees?",
-    "Does this contract auto-renew?"
+    t.termination_rights_q,
+    t.hidden_fees_q,
+    t.auto_renew_q
   ];
 
   const handleSend = async (text: string) => {
@@ -51,11 +56,11 @@ export function ChatSidebar({ documentId }: ChatSidebarProps) {
     setIsLoading(true);
 
     try {
-      const response = await LegalAPI.chat(documentId, text);
+      const response = await LegalAPI.chat(documentId, text, 'document', language);
       const aiMessage: Message = { role: 'ai', content: response.answer };
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
-      const errorMessage: Message = { role: 'ai', content: 'Sorry, I encountered an error while analyzing the document.' };
+      const errorMessage: Message = { role: 'ai', content: t.chat_error };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -67,10 +72,10 @@ export function ChatSidebar({ documentId }: ChatSidebarProps) {
       <div className="p-4 border-b border-border bg-muted/30">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-accent" />
-          Legal Chat
+          {t.legal_chat}
         </h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Ask specific questions about the analyzed document.
+          {t.chat_desc}
         </p>
       </div>
 
@@ -78,7 +83,7 @@ export function ChatSidebar({ documentId }: ChatSidebarProps) {
         {!documentId && (
           <div className="bg-warning/10 text-warning-foreground p-3 rounded-lg border border-warning/20 text-sm flex gap-2">
              <Info className="w-4 h-4 shrink-0 mt-0.5 text-warning" />
-             <p>Please upload and analyze a document before starting a chat.</p>
+             <p>{t.upload_first_chat}</p>
           </div>
         )}
         
@@ -134,7 +139,7 @@ export function ChatSidebar({ documentId }: ChatSidebarProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             disabled={!documentId || isLoading}
-            placeholder={documentId ? "Ask a question..." : "Upload a document first"}
+            placeholder={documentId ? t.ask_question_placeholder : t.upload_first_placeholder}
             className="w-full pl-4 pr-12 py-3 bg-muted border-none rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none transition-shadow disabled:opacity-50"
           />
           <button

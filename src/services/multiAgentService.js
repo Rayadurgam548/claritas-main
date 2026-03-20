@@ -51,7 +51,7 @@ const chatWithAgent = async (documentId, documentText, analysisJson, agentType, 
   // 4. Hit Gemini API
   logger.info(`[Multi-Agent] API CALL for ${agentType} on doc ${documentId}. Context Size: ${compressedContext.length} chars`);
   
-  const model = getModel('gemini-2.5-flash-lite', {}); // optimized fast model
+  const model = getModel('gemini-2.5-flash', {}); // optimized fast model
   const chat = model.startChat({
     history: [
       {
@@ -80,8 +80,11 @@ const chatWithAgent = async (documentId, documentText, analysisJson, agentType, 
 
     return responseText;
   } catch (error) {
-    logger.error(`[Multi-Agent] API Error for ${agentType}`, error);
-    throw new Error(`Failed to generate response for ${agentType}`);
+    logger.error(`[Multi-Agent] API Error for ${agentType}: ${error.message}`, { 
+      stack: error.stack,
+      details: error.response ? error.response.data : error.details 
+    });
+    throw new Error(`Failed to generate response for ${agentType}: ${error.message}`);
   }
 };
 

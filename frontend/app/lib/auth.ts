@@ -22,8 +22,8 @@ export const getUser = () => {
 
 export const logout = () => {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('claritas_token');
-    localStorage.removeItem('claritas_user');
+    localStorage.clear();
+    sessionStorage.clear();
     window.location.href = '/login';
   }
 };

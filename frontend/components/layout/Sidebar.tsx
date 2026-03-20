@@ -90,7 +90,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </h2>
             <div className="space-y-1">
               {documents.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic px-3">No recent documents</p>
+                <p className="text-xs text-muted-foreground italic px-3">{t.no_recent_docs}</p>
               ) : (
                 documents.slice(0, 5).map(doc => (
                   <button 
@@ -134,7 +134,13 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           </button>
         </div>
         <div className="flex items-center justify-between px-2">
-          <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <button 
+            onClick={() => onTabChange('settings')}
+            className={cn(
+              "flex items-center gap-2 text-sm font-medium transition-colors",
+              activeTab === 'settings' ? "text-primary" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
             <Settings className="w-4 h-4" /> {t.settings}
           </button>
           <button onClick={logout} className="flex items-center text-sm font-medium text-danger hover:text-danger/80 transition-colors" title="Logout">

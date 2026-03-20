@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { getToken } from '@/app/lib/auth';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { ChatSidebar } from '@/components/layout/ChatSidebar';
 import { LexDropZone } from '@/components/dashboard/LexDropZone';
@@ -13,16 +11,23 @@ import { AIAssistant } from '@/components/dashboard/AIAssistant';
 import { Deadlines } from '@/components/dashboard/Deadlines';
 import { Glossary } from '@/components/dashboard/Glossary';
 import { ExpertPanel } from '@/components/dashboard/ExpertPanel';
+import { Settings } from '@/components/dashboard/Settings';
 import { VisualAnalytics } from '@/components/dashboard/VisualAnalytics';
 import { DocumentHighlighter } from '@/components/dashboard/DocumentHighlighter';
 import { AnalysisReport } from '@/components/dashboard/AnalysisReport';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import { LegalAPI, UploadResponse, AnalysisResponse, ComparisonResponse, DocumentData } from '@/app/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, ChevronRight, AlertTriangle, Scale, Loader2, ArrowLeft, AlertCircle, RotateCcw, ShieldCheck, ShieldAlert, Upload, Search, Filter, Grid, List, Clock } from 'lucide-react';
+import { 
+  ArrowLeft, RotateCcw, ShieldCheck, ShieldAlert, AlertTriangle, 
+  Scale, FileText, Menu, Sparkles, Plus, Clock, Upload, Search, 
+  Filter, Grid, List, AlertCircle, Loader2, ArrowRight
+} from 'lucide-react';
 import { cn } from '@/app/lib/utils';
 import { LanguageProvider, useLanguage } from '@/context/LanguageContext';
 import { translations } from '@/lib/translations';
+import { useRouter } from 'next/navigation';
+import { getToken } from '@/app/lib/auth';
 
 type ViewState = 'upload' | 'analyzing' | 'single' | 'comparing';
 
@@ -41,8 +46,9 @@ function HomeContent() {
   const { language } = useLanguage();
   const t = translations[language];
   
-  const [currentNavTab, setCurrentNavTab] = useState<string>('dashboard');
-  const [viewState, setViewState] = useState<ViewState>('upload');
+  const [currentNavTab, setCurrentNavTab] = useState('dashboard');
+  const [viewState, setViewState] = useState<'upload' | 'analyzing' | 'single' | 'comparing'>('upload');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'analysis' | 'original'>('analysis');
   const [activeDocument, setActiveDocument] = useState<UploadResponse | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any>(null); // Weakened type for advanced schema flexibility
@@ -69,7 +75,7 @@ function HomeContent() {
         console.error("Failed to fetch documents", error);
       }
     };
-    if (currentNavTab === 'documents') {
+    if (currentNavTab === 'documents' || currentNavTab === 'dashboard') {
        fetchDocs();
     }
   }, [currentNavTab, viewState]);
@@ -112,6 +118,13 @@ function HomeContent() {
     }
   };
 
+  useEffect(() => {
+    const user = getToken(); // Assuming getToken() returns user info or null
+    if (!user) {
+      router.push('/login'); // Use router.push for Next.js navigation
+    }
+  }, [router]);
+
   const resetView = () => {
     setActiveDocument(null);
     setAnalysisResult(null);
@@ -142,13 +155,20 @@ function HomeContent() {
     }
   };
 
+  // Auto-reanalyze when language changes while viewing a document
+  useEffect(() => {
+    if (viewState === 'single' && activeDocument && currentNavTab === 'documents') {
+      handleReanalyze();
+    }
+  }, [language]);
+
   const handleReanalyze = async () => {
     if (!activeDocument) return;
     setAnalysisError(null);
     setViewState('analyzing');
     setActiveTab('analysis');
     try {
-      const analysis = await LegalAPI.analyzeDocument(activeDocument.id);
+      const analysis = await LegalAPI.analyzeDocument(activeDocument.id, language);
       setAnalysisResult(analysis);
       setViewState('single');
     } catch (error: any) {
@@ -194,10 +214,10 @@ function HomeContent() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
                       <h1 className="text-3xl font-bold tracking-tight text-foreground">{t.documents}</h1>
-                      <p className="text-muted-foreground mt-1">Manage and organize your legal documents</p>
+                      <p className="text-muted-foreground mt-1">{t.manage_documents}</p>
                     </div>
                     <button className="px-5 py-2.5 bg-[#4e8df5] text-white text-sm font-semibold rounded-lg hover:bg-[#4e8df5]/90 transition-all shadow-sm flex items-center gap-2">
-                       <Upload className="w-4 h-4" /> Upload Document
+                       <Upload className="w-4 h-4" /> {t.upload_document}
                     </button>
                   </div>
 
@@ -207,13 +227,13 @@ function HomeContent() {
                       <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                       <input 
                         type="text" 
-                        placeholder="Search documents..." 
+                        placeholder={t.search_placeholder} 
                         className="w-full bg-card border border-border/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:ring-1 focus:ring-[#4e8df5] outline-none transition-all"
                       />
                     </div>
                     <div className="flex items-center gap-2 w-full md:w-auto">
                       <button className="flex items-center gap-2 px-4 py-2 border border-border/50 rounded-lg bg-card text-sm font-medium hover:bg-muted/50 transition-colors">
-                        <Filter className="w-4 h-4" /> Filter
+                        <Filter className="w-4 h-4" /> {t.filter}
                       </button>
                       <button onClick={() => setViewMode('grid')} className={`p-2 border border-border/50 rounded-lg text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-muted text-foreground' : 'bg-card text-muted-foreground hover:bg-muted/50'}`}>
                         <Grid className="w-4 h-4" />
@@ -226,7 +246,7 @@ function HomeContent() {
 
                   {/* Tags */}
                   <div className="flex flex-wrap items-center gap-2">
-                     <button onClick={() => setSelectedCategory('All')} className={`px-3 py-1 text-xs font-semibold rounded-full border border-border/50 transition-colors ${selectedCategory === 'All' ? 'bg-[#4e8df5] text-white' : 'bg-card text-muted-foreground hover:text-foreground'}`}>All</button>
+                     <button onClick={() => setSelectedCategory('All')} className={`px-3 py-1 text-xs font-semibold rounded-full border border-border/50 transition-colors ${selectedCategory === 'All' ? 'bg-[#4e8df5] text-white' : 'bg-card text-muted-foreground hover:text-foreground'}`}>{t.all}</button>
                      {['Contracts', 'Real Estate', 'Tax', 'Business', 'Legal', 'Insurance'].map(tag => (
                        <button onClick={() => setSelectedCategory(tag)} key={tag} className={`px-3 py-1 text-xs font-medium rounded-full border border-border/50 transition-colors ${selectedCategory === tag ? 'bg-[#4e8df5] text-white' : 'bg-card text-muted-foreground hover:text-foreground'}`}>{tag}</button>
                      ))}
@@ -247,7 +267,7 @@ function HomeContent() {
                           </div>
                           <div className="min-w-0">
                             <h4 className="font-bold text-[15px] truncate text-foreground mb-1" title={doc.filename}>{doc.filename}</h4>
-                            <p className="text-xs text-muted-foreground uppercase">{doc.filename.split('.').pop()} • Document</p>
+                            <p className="text-xs text-muted-foreground uppercase">{doc.filename.split('.').pop()} • {t.document}</p>
                           </div>
                         </div>
                         
@@ -256,7 +276,7 @@ function HomeContent() {
                             <div className="flex items-center gap-1.5">
                               {doc.status === 'analyzed' ? <ShieldCheck className="w-3.5 h-3.5 text-[#22c55e]" /> : doc.status === 'processing' ? <Clock className="w-3.5 h-3.5 text-warning" /> : <ShieldCheck className="w-3.5 h-3.5 text-[#22c55e]" />}
                               <span className={cn("text-xs font-semibold capitalize", doc.status === 'analyzed' ? 'text-[#22c55e]' : doc.status === 'processing' ? 'text-warning' : 'text-[#22c55e]')}>
-                                {doc.status || 'Analyzed'}
+                                {doc.status === 'analyzed' ? t.analyzed : doc.status === 'processing' ? t.processing : t.analyzed}
                               </span>
                             </div>
                             <span className={`text-[11px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis ${viewMode === 'grid' ? 'ml-2' : 'hidden lg:inline'}`}>
@@ -265,15 +285,15 @@ function HomeContent() {
                           </div>
                           <div className="flex gap-2">
                              <span className="px-2 py-0.5 text-[10px] uppercase font-bold text-muted-foreground border border-border/50 rounded-full bg-background">{doc.category || 'Legal'}</span>
-                             <button onClick={(e) => handleDeleteDocument(doc.id, e)} className="px-2 py-0.5 text-[10px] uppercase font-bold text-danger border border-danger/20 rounded-full bg-danger/10 hover:bg-danger/20 transition-colors ml-auto">Delete</button>
+                             <button onClick={(e) => handleDeleteDocument(doc.id, e)} className="px-2 py-0.5 text-[10px] uppercase font-bold text-danger border border-danger/20 rounded-full bg-danger/10 hover:bg-danger/20 transition-colors ml-auto">{t.delete}</button>
                           </div>
                         </div>
                       </div>
                     )) : (
                       <div className="col-span-full py-12 text-center border-2 border-dashed border-border/50 rounded-2xl bg-muted/10">
                          <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                         <h3 className="text-lg font-semibold text-foreground mb-1">No documents yet</h3>
-                         <p className="text-muted-foreground text-sm">Upload your first legal document to get started.</p>
+                         <h3 className="text-lg font-semibold text-foreground mb-1">{t.no_docs_yet}</h3>
+                         <p className="text-muted-foreground text-sm">{t.upload_first}</p>
                       </div>
                     )}
                   </div>
@@ -291,10 +311,10 @@ function HomeContent() {
                   {analysisError ? (
                     <div className="bg-danger/10 border border-danger/20 rounded-3xl p-8 flex flex-col items-center justify-center text-center max-w-lg mx-auto mt-20 shadow-sm">
                       <AlertCircle className="w-16 h-16 text-danger mb-4" />
-                      <h3 className="text-xl font-semibold text-danger mb-2">Analysis Failed</h3>
+                      <h3 className="text-xl font-semibold text-danger mb-2">{t.analysis_failed}</h3>
                       <p className="text-danger-foreground mb-8 text-sm leading-relaxed">{analysisError}</p>
                       <button onClick={resetView} className="px-6 py-2 bg-card rounded-lg border border-border hover:bg-muted font-medium transition-colors text-foreground">
-                        Go Back to Upload
+                        {t.go_back}
                       </button>
                     </div>
                   ) : (
@@ -307,9 +327,9 @@ function HomeContent() {
                           </div>
                         </div>
                         <div className="text-center space-y-2">
-                          <h3 className="text-xl font-semibold">Step 2: AI Analysis & Risk Scoring</h3>
+                          <h3 className="text-xl font-semibold">{t.step_2_analysis}</h3>
                           <p className="text-muted-foreground text-sm max-w-sm">
-                            Extracting entities, rating legal risk, and mapping protections...
+                            {t.extracting_entities}
                           </p>
                         </div>
                       </div>
@@ -362,13 +382,13 @@ function HomeContent() {
                         <div className="w-14 h-14 rounded-2xl bg-warning/20 text-warning flex items-center justify-center shrink-0 shadow-glow"><AlertTriangle className="w-7 h-7" /></div>
                       )}
                       <div>
-                        <h2 className="text-2xl font-bold mb-1">Status: {analysisResult.riskStatus || 'Analysis Complete'}</h2>
+                        <h2 className="text-2xl font-bold mb-1">{t.status_review}: {analysisResult.riskStatus === 'Safe' ? t.status_safe_to_sign : analysisResult.riskStatus === 'Do Not Sign' ? t.status_do_not_sign : t.status_review}</h2>
                         <p className="text-sm text-muted-foreground">{analysisResult.summary}</p>
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={handleReanalyze} className="p-3 bg-muted hover:bg-muted/80 rounded-xl text-muted-foreground transition-colors"><RotateCcw className="w-5 h-5" /></button>
-                      <button onClick={() => setShowReport(true)} className="px-5 py-3 bg-primary text-primary-foreground font-semibold rounded-xl hover:scale-105 transition-all shadow-glow">Generate Final Report</button>
+                       <button onClick={handleReanalyze} className="p-3 bg-muted hover:bg-muted/80 rounded-xl text-muted-foreground transition-colors"><RotateCcw className="w-5 h-5" /></button>
+                       <button onClick={() => setShowReport(true)} className="px-5 py-3 bg-primary text-primary-foreground font-semibold rounded-xl hover:scale-105 transition-all shadow-glow">{t.generate_report}</button>
                     </div>
                   </div>
 
@@ -390,8 +410,8 @@ function HomeContent() {
 
                   {/* View Tabs */}
                   <div className="flex bg-muted/30 p-1 rounded-xl w-fit border border-border/50 items-center gap-2 mb-4">
-                    <button onClick={() => setActiveTab('analysis')} className={cn("px-6 py-2 rounded-lg text-sm font-medium transition-all", activeTab === 'analysis' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Highlighted Clauses</button>
-                    <button onClick={() => setActiveTab('original')} className={cn("px-6 py-2 rounded-lg text-sm font-medium transition-all", activeTab === 'original' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Original File</button>
+                    <button onClick={() => setActiveTab('analysis')} className={cn("px-6 py-2 rounded-lg text-sm font-medium transition-all", activeTab === 'analysis' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>{t.highlighted_clauses}</button>
+                    <button onClick={() => setActiveTab('original')} className={cn("px-6 py-2 rounded-lg text-sm font-medium transition-all", activeTab === 'original' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>{t.original_file}</button>
                   </div>
 
                   {/* Document Content View */}
@@ -408,7 +428,7 @@ function HomeContent() {
                   {/* Visual Analytics */}
                   {(analysisResult.analytics || analysisResult.simulation) && (
                     <div className="pt-8 border-t border-border/50">
-                      <h3 className="text-xl font-bold mb-6">Deep Visual Analytics</h3>
+                      <h3 className="text-xl font-bold mb-6">{t.deep_visual_analytics}</h3>
                       <VisualAnalytics analytics={analysisResult.analytics} simulation={analysisResult.simulation} timeline={analysisResult.timeline || []} />
                     </div>
                   )}
@@ -504,6 +524,8 @@ function HomeContent() {
         return <ExpertPanel activeDocumentId={activeDocument?.id} />;
       case 'glossary':
         return <Glossary />;
+      case 'settings':
+        return <Settings />;
       default:
         return null;
     }
@@ -521,17 +543,34 @@ function HomeContent() {
                      currentNavTab === 'expertPanel' ? t.expert_panel :
                      currentNavTab === 'deadlines' ? t.deadlines :
                      currentNavTab === 'glossary' ? t.glossary :
+                     currentNavTab === 'settings' ? t.settings :
                      'Claritas';
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="lex-theme">
       <div className="flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-300">
-        <Sidebar activeTab={currentNavTab} onTabChange={setCurrentNavTab} />
+        <div className={cn(
+          "fixed inset-0 z-40 lg:relative lg:z-auto transition-transform duration-300 transform lg:translate-x-0",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}>
+          <Sidebar activeTab={currentNavTab} onTabChange={(tab) => { setCurrentNavTab(tab); setIsSidebarOpen(false); }} />
+          {isSidebarOpen && (
+            <div 
+              className="fixed inset-0 bg-black/50 lg:hidden z-[-1]" 
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+        </div>
         
         <main className="flex-1 flex flex-col min-w-0 bg-muted/10 relative overflow-hidden">
-          {/* Global Top Bar */}
-          <header className="h-16 border-b border-border/50 bg-card/30 backdrop-blur-md flex items-center justify-between px-8 z-30 shrink-0 sticky top-0">
+          <header className="h-16 border-b border-border/50 bg-card/30 backdrop-blur-md flex items-center justify-between px-4 md:px-8 z-30 shrink-0 sticky top-0">
             <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-2 lg:hidden rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
               {currentNavTab === 'documents' && viewState !== 'upload' && (
                 <button 
                   onClick={resetView}

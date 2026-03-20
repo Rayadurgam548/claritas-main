@@ -40,7 +40,7 @@ export function LexDropZone({ onUploadSuccess }: LexDropZoneProps) {
       onUploadSuccess(flatResults);
     } catch (error: any) {
       console.error("Upload failed", error);
-      setUploadError(error.message || "Failed to upload document(s).");
+      setUploadError(error.message || t.upload_error);
     } finally {
       setIsUploading(false);
     }
@@ -139,8 +139,8 @@ export function LexDropZone({ onUploadSuccess }: LexDropZoneProps) {
               className="flex flex-col items-center text-danger"
             >
               <AlertCircle className="w-16 h-16 mb-4" />
-              <p className="text-lg font-medium">File type not supported</p>
-              <p className="text-sm mt-2 opacity-80">Please upload PDF, DOCX, TXT, JPG, or PNG (Max 5MB)</p>
+              <p className="text-lg font-medium">{t.file_not_supported}</p>
+              <p className="text-sm mt-2 opacity-80">{t.file_types_supported} ({t.max_size})</p>
             </motion.div>
           ) : (
             <motion.div
@@ -158,12 +158,12 @@ export function LexDropZone({ onUploadSuccess }: LexDropZoneProps) {
                 )}
               </div>
               <p className={cn("text-xl font-bold mb-2", privacyMode ? "text-white" : "text-foreground")}>
-                {isDragActive ? "Drop the gavel... I mean, file!" : privacyMode ? "Incognito Upload Active" : "Drag & Drop Legal Document"}
+                {isDragActive ? t.drop_file_now : privacyMode ? t.incognito_upload : t.drag_drop_desc}
               </p>
               <div className={cn("flex items-center gap-4 text-sm mt-4", privacyMode ? "text-slate-400" : "text-muted-foreground")}>
-                <span className="flex items-center gap-1.5"><FileType className="w-4 h-4" /> PDF, DOCX, TXT, JPG, PNG</span>
+                <span className="flex items-center gap-1.5"><FileType className="w-4 h-4" /> {t.file_types_supported}</span>
                 <span className={privacyMode ? "text-slate-700" : "text-border"}>•</span>
-                <span>Max 5MB</span>
+                <span>{t.max_size}</span>
               </div>
             </motion.div>
           )}

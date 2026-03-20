@@ -46,30 +46,36 @@ const parseJsonResponse = (text) => {
   }
 };
 
-const analyzeDocument = async (text) => {
+const analyzeDocument = async (text, language = 'English') => {
   const model = getModel('gemini-2.5-flash', { responseMimeType: 'application/json', responseSchema: analysisSchema });
   
   return executeWithRetry(async () => {
-    const combinedPrompt = `${analysisPrompt}\n\n--- DOCUMENT TEXT ---\n${text.substring(0, 1000000)}`; // limit size if necessary
+    const localizationInstruction = `
+CRITICAL LOCALIZATION RULES:
+1. All descriptive fields (summary, explanation, title, snippet, event, dateOrTrigger, worstCase, penalties, financialLoss, lockIn) MUST be strictly in ${language}.
+2. Technical enum values (riskStatus: "Safe", "Review", "Do Not Sign"; severity: "High", "Medium", "Low"; iconType: "Warning", "Money", "Lock"; highlightColor: "red", "yellow", "green") MUST remain in English exactly as specified in the schema.
+`;
+    const combinedPrompt = `${analysisPrompt}\n${localizationInstruction}\n\n--- DOCUMENT TEXT ---\n${text.substring(0, 1000000)}`; // limit size if necessary
     const result = await model.generateContent(combinedPrompt);
     const responseText = result.response.text();
     return parseJsonResponse(responseText);
   });
 };
 
-const compareDocuments = async (text1, text2) => {
+const compareDocuments = async (text1, text2, language = 'English') => {
   const model = getModel('gemini-2.5-flash', { responseMimeType: 'application/json', responseSchema: compareSchema });
 
   return executeWithRetry(async () => {
-    const combinedPrompt = `${comparePrompt}\n\n=== DOCUMENT 1 ===\n${text1}\n\n=== DOCUMENT 2 ===\n${text2}`;
+    const localizationInstruction = `CRITICAL: You MUST perform the comparison and provide all text fields (verdict, differences, impact, etc.) strictly in ${language}.`;
+    const combinedPrompt = `${comparePrompt}\n${localizationInstruction}\n\n=== DOCUMENT 1 ===\n${text1}\n\n=== DOCUMENT 2 ===\n${text2}`;
     const result = await model.generateContent(combinedPrompt);
     const responseText = result.response.text();
     return parseJsonResponse(responseText);
   });
 };
 
-const chatWithDocument = async (documentText, analysisJson, query) => {
-  const model = getModel('gemini-2.5-flash-lite', {}); // optimized conversational model
+const chatWithDocument = async (documentText, analysisJson, query, language = 'English') => {
+  const model = getModel('gemini-2.5-flash', {}); // optimized conversational model
 
   return executeWithRetry(async () => {
     const context = documentText ? `--- DOCUMENT TEXT ---\n${documentText}\n\n--- PREVIOUS ANALYSIS ---\n${JSON.stringify(analysisJson)}\n` : `General Legal Inquiry (No specific document provided).`;
@@ -78,7 +84,7 @@ const chatWithDocument = async (documentText, analysisJson, query) => {
       history: [
         {
           role: 'user',
-          parts: [{ text: chatSystemInstruction + "\n\n" + context }],
+          parts: [{ text: chatSystemInstruction + `\n\nCRITICAL: You MUST answer strictly in ${language}. If the user asks in another language, still reply in ${language}.\n\n` + context }],
         },
         {
           role: 'model',

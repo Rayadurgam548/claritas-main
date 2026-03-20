@@ -5,6 +5,7 @@ const logger = require('../utils/logger');
 const analyzeDocument = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const { language } = req.body;
     
     const docInfo = await storageService.getDocumentInfo(id);
     if (!docInfo) {
@@ -17,7 +18,7 @@ const analyzeDocument = async (req, res, next) => {
     }
 
     // Call AI Service
-    const analysisJson = await aiService.analyzeDocument(text);
+    const analysisJson = await aiService.analyzeDocument(text, language);
 
     // Save Analysis result
     await storageService.saveAnalysis(id, analysisJson);
@@ -33,7 +34,7 @@ const analyzeDocument = async (req, res, next) => {
 
 const compareDocuments = async (req, res, next) => {
   try {
-    const { docId1, docId2 } = req.body;
+    const { docId1, docId2, language } = req.body;
     if (!docId1 || !docId2) {
       return res.status(400).json({ success: false, error: 'docId1 and docId2 are required' });
     }
@@ -45,7 +46,7 @@ const compareDocuments = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'One or both documents not found' });
     }
 
-    const comparisonJson = await aiService.compareDocuments(text1, text2);
+    const comparisonJson = await aiService.compareDocuments(text1, text2, language);
 
     res.status(200).json({ success: true, data: comparisonJson });
   } catch (error) {
@@ -55,7 +56,7 @@ const compareDocuments = async (req, res, next) => {
 
 const chatDocumentation = async (req, res, next) => {
   try {
-    const { documentId, query } = req.body;
+    const { documentId, query, language } = req.body;
     
     if (!query) {
       return res.status(400).json({ success: false, error: 'query is required' });
@@ -73,7 +74,7 @@ const chatDocumentation = async (req, res, next) => {
       }
     }
 
-    const response = await aiService.chatWithDocument(text, analysisJson, query);
+    const response = await aiService.chatWithDocument(text, analysisJson, query, language);
 
     res.status(200).json({ success: true, data: { response } });
   } catch (error) {
