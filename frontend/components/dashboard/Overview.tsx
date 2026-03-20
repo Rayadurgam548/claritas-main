@@ -111,7 +111,8 @@ export function DashboardOverview({ onNavigate, onUploadSuccess, documents = [] 
 
     // Count queries from localStorage (if they have timestamps)
     let queryCount = 0;
-    const stored = localStorage.getItem('lex_queries');
+    const isBrowser = typeof window !== 'undefined';
+    const stored = isBrowser ? localStorage.getItem('lex_queries') : null;
     if (stored) {
       try {
         const queries = JSON.parse(stored);
