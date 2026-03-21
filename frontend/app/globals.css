@@ -32,6 +32,7 @@
   /* Shadows */
   --shadow-lex: 0 20px 25px -5px rgb(123 44 191 / 0.1), 0 8px 10px -6px rgb(0 245 212 / 0.1);
   --glow: 0 0 20px rgba(0, 245, 212, 0.5);
+  --popover: #ffffff;
 }
 
 .dark {
@@ -52,6 +53,7 @@
 
   --shadow-lex: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
   --glow: 0 0 20px rgba(0, 245, 212, 0.5), 0 0 40px rgba(123, 44, 191, 0.3);
+  --popover: #0f111a;
 }
 
 @theme inline {
@@ -77,6 +79,7 @@
   
   --shadow-lex: var(--shadow-lex);
   --shadow-glow: var(--glow);
+  --color-popover: var(--popover);
 }
 
 body {

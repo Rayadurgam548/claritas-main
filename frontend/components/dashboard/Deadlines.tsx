@@ -353,7 +353,7 @@ export function Deadlines() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full left-0 right-0 mt-2 bg-card border border-border/50 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                        className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border/60 rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl"
                       >
                         {['High', 'Medium', 'Low'].map((p) => (
                           <button

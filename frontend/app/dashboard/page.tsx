@@ -259,7 +259,7 @@ function HomeContent() {
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="absolute top-full left-0 right-0 mt-2 bg-card border border-border/50 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto"
+                            className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border/60 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto backdrop-blur-xl"
                           >
                             {allDocs.filter(d => d.filename.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 ? (
                               allDocs
