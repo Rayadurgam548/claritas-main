@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { LegalAPI } from '@/app/lib/api';
-import { MessageSquare, Send, Sparkles, FileText, Scale, Lightbulb, Upload } from 'lucide-react';
+import { MessageSquare, Send, Sparkles, FileText, Scale, Lightbulb, Upload, Volume2, VolumeX, Pause, ShieldAlert } from 'lucide-react';
 import { cn } from '@/app/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/context/LanguageContext';
@@ -15,30 +15,60 @@ export function AIAssistant({ documentId }: { documentId?: string | null }) {
   const [chatMode, setChatMode] = useState<'general' | 'document' | 'terminology'>(documentId ? 'document' : 'general');
   const [localDocumentId, setLocalDocumentId] = useState<string | null>(documentId || null);
   const [isListening, setIsListening] = useState(false);
-  const { language } = useLanguage();
+  const [currentlySpeaking, setCurrentlySpeaking] = useState<number | null>(null);
+  const { language, isMuted } = useLanguage();
   const t = translations[language];
+
+  const speakMessage = (text: string, index: number) => {
+    if (!('speechSynthesis' in window)) return;
+    
+    if (currentlySpeaking === index) {
+      window.speechSynthesis.cancel();
+      setCurrentlySpeaking(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language === 'Hindi' ? 'hi-IN' : language === 'Tamil' ? 'ta-IN' : language === 'Telugu' ? 'te-IN' : 'en-US';
+    
+    utterance.onstart = () => setCurrentlySpeaking(index);
+    utterance.onend = () => setCurrentlySpeaking(null);
+    utterance.onerror = () => setCurrentlySpeaking(null);
+    
+    window.speechSynthesis.speak(utterance);
+  };
 
   const handleSend = async (text: string) => {
     if (!text.trim()) return;
 
     setMessages(prev => [...prev, { role: 'user', content: text }]);
     setQuery('');
+    setIsLoading(true);
     try {
       const response = await LegalAPI.chat(localDocumentId, text, chatMode, language);
-      const newAiMsg = { role: 'ai', content: response.answer };
+      console.log("DEBUG: AIAssistant raw response:", response);
+      
+      const newAiMsg = { 
+        role: 'ai', 
+        content: response.answer || "No response text found",
+        confidence: response.confidence,
+        riskFlags: response.risk_flags,
+        disclaimer: response.disclaimer
+      };
       setMessages(prev => [...prev, newAiMsg]);
       
       // Save to localStorage for dashboard
-      const stored = localStorage.getItem('lex_queries');
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('lex_queries') : null;
       const queries = stored ? JSON.parse(stored) : [];
       queries.push({ text, time: 'Just now', timestamp: new Date().toISOString() });
-      localStorage.setItem('lex_queries', JSON.stringify(queries.slice(-50))); // Keep last 50 for better chart data
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('lex_queries', JSON.stringify(queries.slice(-50)));
+      }
 
-      // Potential TTS hook here
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(response.answer);
-        utterance.lang = language === 'Hindi' ? 'hi-IN' : language === 'Tamil' ? 'ta-IN' : language === 'Telugu' ? 'te-IN' : 'en-US';
-        window.speechSynthesis.speak(utterance);
+      // TTS hook
+      if (!isMuted && 'speechSynthesis' in window) {
+        speakMessage(response.answer || "No response text found", messages.length + 1);
       }
     } catch (error) {
       setMessages(prev => [...prev, { role: 'ai', content: 'Sorry, I encountered an error. Please try again later.' }]);
@@ -98,12 +128,60 @@ export function AIAssistant({ documentId }: { documentId?: string | null }) {
                     )}
                   >
                     <div className={cn(
-                      "max-w-[80%] p-4 rounded-3xl shadow-sm text-[15px] leading-relaxed",
+                      "max-w-[80%] p-4 rounded-3xl shadow-sm text-[15px] leading-relaxed relative group/msg transition-all flex flex-col gap-3",
                       msg.role === 'user'
                         ? "bg-[#4e8df5] text-white rounded-br-sm"
-                        : "bg-card border border-border/50 text-foreground rounded-bl-sm"
+                        : "bg-card border border-border/50 text-foreground rounded-bl-sm pb-10"
                     )}>
-                      {msg.content}
+                      {msg.role === 'ai' && msg.confidence && (
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={cn(
+                            "text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border",
+                            msg.confidence === 'High' ? "bg-success/10 text-success border-success/20" :
+                            msg.confidence === 'Medium' ? "bg-warning/10 text-warning border-warning/20" : "bg-danger/10 text-danger border-danger/20"
+                          )}>
+                             Confidence: {msg.confidence}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                      
+                      {msg.role === 'ai' && msg.riskFlags && msg.riskFlags.length > 0 && (
+                        <div className="space-y-2 mt-2">
+                           <p className="text-xs font-bold text-danger flex items-center gap-1.5"><ShieldAlert className="w-3.5 h-3.5" /> Identified Risks:</p>
+                           <div className="flex flex-wrap gap-2">
+                             {msg.riskFlags.map((flag: string, fIdx: number) => (
+                               <span key={fIdx} className="bg-danger/5 border border-danger/10 text-danger text-[10px] px-2 py-1 rounded-lg">
+                                 {flag}
+                               </span>
+                             ))}
+                           </div>
+                        </div>
+                      )}
+
+                      {msg.role === 'ai' && msg.disclaimer && (
+                        <p className="text-[10px] text-muted-foreground italic mt-2 border-t border-border/30 pt-2">
+                          {msg.disclaimer}
+                        </p>
+                      )}
+                      
+                      {msg.role === 'ai' && (
+                        <button 
+                          onClick={() => speakMessage(msg.content, idx)}
+                          className={cn(
+                            "absolute bottom-2 right-2 p-1.5 rounded-xl bg-muted/50 border border-border/50 text-primary transition-all hover:bg-muted hover:scale-110",
+                            currentlySpeaking === idx ? "animate-pulse border-primary" : "opacity-40 group-hover/msg:opacity-100"
+                          )}
+                          title="Speak this message"
+                        >
+                          {currentlySpeaking === idx ? (
+                            <Pause className="w-3.5 h-3.5" />
+                          ) : (
+                            <Volume2 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 ))}

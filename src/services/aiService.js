@@ -1,5 +1,5 @@
 const { getModel } = require('../ai/config');
-const { analysisPrompt, analysisSchema, comparePrompt, compareSchema, chatSystemInstruction } = require('../ai/prompts');
+const { analysisPrompt, analysisSchema, comparePrompt, compareSchema, chatSystemInstruction, chatSchema } = require('../ai/prompts');
 const logger = require('../utils/logger');
 
 const MAX_RETRIES = 1;
@@ -39,7 +39,8 @@ const parseJsonResponse = (text) => {
     if (cleanText.endsWith('\`\`\`')) {
       cleanText = cleanText.substring(0, cleanText.length - 3);
     }
-    return JSON.parse(cleanText.trim());
+    const parsed = JSON.parse(cleanText.trim());
+    return parsed.response ? parsed.response : parsed;
   } catch (err) {
     logger.error('Failed to parse AI JSON response', { text, err });
     throw new Error('Invalid JSON received from AI');
@@ -47,7 +48,7 @@ const parseJsonResponse = (text) => {
 };
 
 const analyzeDocument = async (text, language = 'English') => {
-  const model = getModel('gemini-2.5-flash', { responseMimeType: 'application/json', responseSchema: analysisSchema });
+  const model = getModel('gemini-flash-latest', { responseMimeType: 'application/json', responseSchema: analysisSchema });
   
   return executeWithRetry(async () => {
     const localizationInstruction = `
@@ -63,7 +64,7 @@ CRITICAL LOCALIZATION RULES:
 };
 
 const compareDocuments = async (text1, text2, language = 'English') => {
-  const model = getModel('gemini-2.5-flash', { responseMimeType: 'application/json', responseSchema: compareSchema });
+  const model = getModel('gemini-flash-latest', { responseMimeType: 'application/json', responseSchema: compareSchema });
 
   return executeWithRetry(async () => {
     const localizationInstruction = `CRITICAL: You MUST perform the comparison and provide all text fields (verdict, differences, impact, etc.) strictly in ${language}.`;
@@ -74,30 +75,39 @@ const compareDocuments = async (text1, text2, language = 'English') => {
   });
 };
 
+const isLegalQuery = (query) => {
+  const legalKeywords = [
+    'contract', 'law', 'agreement', 'clause', 'legal', 'policy', 'rights', 'penalty', 
+    'obligation', 'liability', 'termination', 'indemnity', 'warranty', 'breach', 
+    'regulation', 'statute', 'compliance', 'dispute', 'litigation', 'arbitration',
+    'tenant', 'landlord', 'lease', 'employment', 'ip ', 'intellectual property',
+    'copyright', 'trademark', 'privacy', 'data protection', 'gdpr', 'terms of service',
+    'privacy policy', 'disclosure', 'nda', 'confidentiality',
+    'hi', 'hello', 'hey', 'morning', 'evening', 'thanks', 'thank you', 'how are you'
+  ];
+  const q = query.toLowerCase();
+  return legalKeywords.some(keyword => q.includes(keyword));
+};
+
 const chatWithDocument = async (documentText, analysisJson, query, language = 'English') => {
-  const model = getModel('gemini-2.5-flash', {}); // optimized conversational model
+  // 1. Check if the query is potentially out of scope (non-legal and non-greeting)
+  // We actually let the AI handle most things now for a "real-time" feel, 
+  // but we can add a flag or system instruction hint if it's very clearly off-track.
+  const isConversational = !isLegalQuery(query);
+
+  const model = getModel('gemini-flash-latest', { 
+    responseMimeType: 'application/json', 
+    responseSchema: chatSchema 
+  }); 
 
   return executeWithRetry(async () => {
     const context = documentText ? `--- DOCUMENT TEXT ---\n${documentText}\n\n--- PREVIOUS ANALYSIS ---\n${JSON.stringify(analysisJson)}\n` : `General Legal Inquiry (No specific document provided).`;
     
-    const chat = model.startChat({
-      history: [
-        {
-          role: 'user',
-          parts: [{ text: chatSystemInstruction + `\n\nCRITICAL: You MUST answer strictly in ${language}. If the user asks in another language, still reply in ${language}.\n\n` + context }],
-        },
-        {
-          role: 'model',
-          parts: [{ text: "Understood. I will answer strictly based on the provided document context." }],
-        }
-      ],
-      generationConfig: {
-        temperature: 0.2, // low temp to prevent hallucination
-      }
-    });
-
-    const result = await chat.sendMessage(query);
-    return result.response.text();
+    const combinedPrompt = `${chatSystemInstruction}\n\nCRITICAL: You MUST answer strictly in ${language}. If the user asks in another language, still reply in ${language}.\n\n${context}\n\nUser Question: ${query}`;
+    
+    const result = await model.generateContent(combinedPrompt);
+    const responseText = result.response.text();
+    return parseJsonResponse(responseText);
   });
 };
 

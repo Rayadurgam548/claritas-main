@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { ChatSidebar } from '@/components/layout/ChatSidebar';
-import { LexDropZone } from '@/components/dashboard/LexDropZone';
+import { LexDropZone, LexDropZoneRef } from '@/components/dashboard/LexDropZone';
 import { RiskRadar } from '@/components/dashboard/RiskRadar';
 import { LocalizationControls } from '@/components/dashboard/LocalizationControls';
 import { DashboardOverview } from '@/components/dashboard/Overview';
@@ -60,9 +60,12 @@ function HomeContent() {
   const [comparisonResult, setComparisonResult] = useState<ComparisonResponse | null>(null);
 
   const [documents, setDocuments] = useState<DocumentData[]>([]);
+  const dropzoneRef = useRef<LexDropZoneRef>(null);
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     const fetchDocs = async () => {
@@ -198,7 +201,11 @@ function HomeContent() {
         return <DashboardOverview onNavigate={setCurrentNavTab} onUploadSuccess={handleUploadSuccess} documents={documents} />;
       case 'documents':
         const allDocs = documents;
-        const filteredDocs = selectedCategory === 'All' ? allDocs : allDocs.filter(d => d.category === selectedCategory || (d.category === undefined && selectedCategory === 'Legal'));
+        const filteredDocs = allDocs.filter(d => {
+          const categoryMatch = selectedCategory === 'All' || d.category === selectedCategory || (d.category === undefined && selectedCategory === 'Legal');
+          const searchMatch = d.filename.toLowerCase().includes(searchQuery.toLowerCase());
+          return categoryMatch && searchMatch;
+        });
         
         return (
           <div className="flex-1 flex flex-col h-full relative p-8">
@@ -216,7 +223,10 @@ function HomeContent() {
                       <h1 className="text-3xl font-bold tracking-tight text-foreground">{t.documents}</h1>
                       <p className="text-muted-foreground mt-1">{t.manage_documents}</p>
                     </div>
-                    <button className="px-5 py-2.5 bg-[#4e8df5] text-white text-sm font-semibold rounded-lg hover:bg-[#4e8df5]/90 transition-all shadow-sm flex items-center gap-2">
+                    <button 
+                      onClick={() => dropzoneRef.current?.open()}
+                      className="px-5 py-2.5 bg-[#4e8df5] text-white text-sm font-semibold rounded-lg hover:bg-[#4e8df5]/90 transition-all shadow-sm flex items-center gap-2"
+                    >
                        <Upload className="w-4 h-4" /> {t.upload_document}
                     </button>
                   </div>
@@ -228,8 +238,58 @@ function HomeContent() {
                       <input 
                         type="text" 
                         placeholder={t.search_placeholder} 
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setShowSuggestions(e.target.value.length > 0);
+                        }}
+                        onFocus={() => {
+                          if (searchQuery.length > 0) setShowSuggestions(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            setShowSuggestions(false);
+                          }
+                        }}
                         className="w-full bg-card border border-border/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:ring-1 focus:ring-[#4e8df5] outline-none transition-all"
                       />
+                      <AnimatePresence>
+                        {showSuggestions && searchQuery.length > 0 && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="absolute top-full left-0 right-0 mt-2 bg-card border border-border/50 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto"
+                          >
+                            {allDocs.filter(d => d.filename.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 ? (
+                              allDocs
+                                .filter(d => d.filename.toLowerCase().includes(searchQuery.toLowerCase()))
+                                .slice(0, 5)
+                                .map((doc) => (
+                                  <button
+                                    key={doc.id}
+                                    onClick={() => {
+                                      setSearchQuery(doc.filename);
+                                      setShowSuggestions(false);
+                                      handleViewDocument(doc);
+                                    }}
+                                    className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors flex items-center gap-3 border-b border-border/10 last:border-0"
+                                  >
+                                    <FileText className="w-4 h-4 text-[#4e8df5]" />
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-medium text-foreground truncate">{doc.filename}</p>
+                                      <p className="text-[10px] text-muted-foreground uppercase">{doc.category || 'Legal'}</p>
+                                    </div>
+                                  </button>
+                                ))
+                            ) : (
+                              <div className="px-4 py-3 text-sm text-muted-foreground">
+                                {t.no_results_for} "{searchQuery}"
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                     <div className="flex items-center gap-2 w-full md:w-auto">
                       <button className="flex items-center gap-2 px-4 py-2 border border-border/50 rounded-lg bg-card text-sm font-medium hover:bg-muted/50 transition-colors">
@@ -254,7 +314,7 @@ function HomeContent() {
 
                   {/* Upload Drop Zone (matching Image 2 somewhat, but combined) */}
                   <div className="mb-6">
-                    <LexDropZone onUploadSuccess={handleUploadSuccess} />
+                    <LexDropZone ref={dropzoneRef} onUploadSuccess={handleUploadSuccess} />
                   </div>
 
                   {/* Document Grid / List */}
@@ -290,10 +350,20 @@ function HomeContent() {
                         </div>
                       </div>
                     )) : (
-                      <div className="col-span-full py-12 text-center border-2 border-dashed border-border/50 rounded-2xl bg-muted/10">
-                         <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                         <h3 className="text-lg font-semibold text-foreground mb-1">{t.no_docs_yet}</h3>
-                         <p className="text-muted-foreground text-sm">{t.upload_first}</p>
+                      <div className="col-span-full py-20 text-center border-2 border-dashed border-border/50 rounded-3xl bg-muted/5">
+                         <Search className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-30" />
+                         <h3 className="text-xl font-bold text-foreground mb-2">No documents found</h3>
+                         <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+                           {searchQuery ? `We couldn't find any documents matching "${searchQuery}" in the ${selectedCategory} category.` : t.upload_first}
+                         </p>
+                         {searchQuery && (
+                           <button 
+                             onClick={() => setSearchQuery("")}
+                             className="mt-6 text-[#4e8df5] text-sm font-semibold hover:underline"
+                           >
+                             Clear search
+                           </button>
+                         )}
                       </div>
                     )}
                   </div>

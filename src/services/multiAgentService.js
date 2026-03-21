@@ -3,6 +3,20 @@ const { reduceContext } = require('../utils/contextReducer');
 const cacheManager = require('../utils/cacheManager');
 const logger = require('../utils/logger');
 
+const isLegalQuery = (query) => {
+  const legalKeywords = [
+    'contract', 'law', 'agreement', 'clause', 'legal', 'policy', 'rights', 'penalty', 
+    'obligation', 'liability', 'termination', 'indemnity', 'warranty', 'breach', 
+    'regulation', 'statute', 'compliance', 'dispute', 'litigation', 'arbitration',
+    'tenant', 'landlord', 'lease', 'employment', 'ip ', 'intellectual property',
+    'copyright', 'trademark', 'privacy', 'data protection', 'gdpr', 'terms of service',
+    'privacy policy', 'disclosure', 'nda', 'confidentiality',
+    'hi', 'hello', 'hey', 'morning', 'evening', 'thanks', 'thank you', 'how are you'
+  ];
+  const q = query.toLowerCase();
+  return legalKeywords.some(keyword => q.includes(keyword));
+};
+
 const AGENT_PROMPTS = {
   lawyer: `You are an elite Senior Lawyer. 👨‍⚖️
 Your SOLE domain is legal risks, contract liabilities, indemnification, breaches, and jurisprudence.
@@ -29,6 +43,10 @@ You understand the overall summary and general intent of the document. You can a
 };
 
 const chatWithAgent = async (documentId, documentText, analysisJson, agentType, query) => {
+  // 0. Safety Layer - We now allow greetings to pass to the AI personalities for a more natural flow.
+  // The system prompts for each agent will handle the domain boundaries.
+  const isConversational = !isLegalQuery(query);
+
   // 1. Check Cache First (Zero API Cost)
   if (documentId && query) {
     const cachedResponse = cacheManager.getCache(documentId, agentType, query);
@@ -51,7 +69,7 @@ const chatWithAgent = async (documentId, documentText, analysisJson, agentType, 
   // 4. Hit Gemini API
   logger.info(`[Multi-Agent] API CALL for ${agentType} on doc ${documentId}. Context Size: ${compressedContext.length} chars`);
   
-  const model = getModel('gemini-2.5-flash', {}); // optimized fast model
+  const model = getModel('gemini-flash-latest', {}); // optimized fast model
   const chat = model.startChat({
     history: [
       {
@@ -74,11 +92,19 @@ const chatWithAgent = async (documentId, documentText, analysisJson, agentType, 
     const responseText = result.response.text();
     
     // 5. Save to Cache
+    const finalResponse = {
+      answer: responseText,
+      confidence: "High",
+      risk_flags: [],
+      disclaimer: "This is not a substitute for a qualified legal professional"
+    };
+
     if (documentId && query) {
-      cacheManager.setCache(documentId, agentType, query, responseText);
+      cacheManager.setCache(documentId, agentType, query, finalResponse);
     }
 
-    return responseText;
+    const unwrapped = finalResponse.response ? finalResponse.response : finalResponse;
+    return unwrapped;
   } catch (error) {
     logger.error(`[Multi-Agent] API Error for ${agentType}: ${error.message}`, { 
       stack: error.stack,

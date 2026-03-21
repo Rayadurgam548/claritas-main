@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, FileType, CheckCircle, AlertCircle, ShieldAlert, EyeOff } from 'lucide-react';
@@ -13,7 +13,11 @@ interface LexDropZoneProps {
   onUploadSuccess: (responses: UploadResponse[]) => void;
 }
 
-export function LexDropZone({ onUploadSuccess }: LexDropZoneProps) {
+export interface LexDropZoneRef {
+  open: () => void;
+}
+
+export const LexDropZone = forwardRef<LexDropZoneRef, LexDropZoneProps>(({ onUploadSuccess }, ref) => {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const { language } = useLanguage();
@@ -44,10 +48,11 @@ export function LexDropZone({ onUploadSuccess }: LexDropZoneProps) {
     } finally {
       setIsUploading(false);
     }
-  }, [privacyMode, onUploadSuccess]);
+  }, [privacyMode, onUploadSuccess, t.upload_error]);
 
-  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, isDragReject, open } = useDropzone({
     onDrop,
+    noClick: false, // Maintain default click behavior for the zone itself
     accept: {
       'application/pdf': ['.pdf'],
       'image/jpeg': ['.jpg', '.jpeg'],
@@ -58,6 +63,11 @@ export function LexDropZone({ onUploadSuccess }: LexDropZoneProps) {
     maxSize: 5 * 1024 * 1024, // 5MB
     disabled: isUploading
   });
+
+  // Expose the open method to components holding a ref
+  useImperativeHandle(ref, () => ({
+    open
+  }));
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-4">
@@ -185,4 +195,5 @@ export function LexDropZone({ onUploadSuccess }: LexDropZoneProps) {
       </AnimatePresence>
     </div>
   );
-}
+});
+ LexDropZone.displayName = 'LexDropZone';

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { LegalAPI, DocumentData } from '@/app/lib/api';
 import { getUser, logout } from '@/app/lib/auth';
-import { ScrollText, History, Clock, CheckCircle, FileText, Settings, Moon, Sun, Monitor, Trash2, LogOut, Home, MessageSquare, Folder, Calendar, BookOpen, Users } from 'lucide-react';
+import { ScrollText, History, Clock, CheckCircle, FileText, Settings, Moon, Sun, Monitor, Trash2, LogOut, Home, MessageSquare, Folder, Calendar, BookOpen, Users, Volume2, Pause } from 'lucide-react';
 import { cn } from '@/app/lib/utils';
 import { useTheme } from './ThemeProvider';
 import { useLanguage } from '@/context/LanguageContext';
@@ -17,9 +17,32 @@ interface SidebarProps {
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [currentlySpeaking, setCurrentlySpeaking] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
-  const { language } = useLanguage();
+  const { language, isMuted } = useLanguage();
   const t = translations[language];
+
+  const speakDocSummary = (e: React.MouseEvent, doc: DocumentData) => {
+    e.stopPropagation();
+    if (!('speechSynthesis' in window)) return;
+    
+    if (currentlySpeaking === doc.id) {
+      window.speechSynthesis.cancel();
+      setCurrentlySpeaking(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const text = `Document: ${doc.filename}. Status: ${doc.status}.`;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language === 'Hindi' ? 'hi-IN' : language === 'Tamil' ? 'ta-IN' : language === 'Telugu' ? 'te-IN' : 'en-US';
+    
+    utterance.onstart = () => setCurrentlySpeaking(doc.id);
+    utterance.onend = () => setCurrentlySpeaking(null);
+    utterance.onerror = () => setCurrentlySpeaking(null);
+    
+    window.speechSynthesis.speak(utterance);
+  };
 
   useEffect(() => {
     setUser(getUser());
@@ -102,6 +125,17 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                     <span className="text-xs font-medium truncate text-muted-foreground group-hover:text-foreground flex-1">
                       {doc.filename}
                     </span>
+                    {!isMuted && (
+                      <button 
+                        onClick={(e) => speakDocSummary(e, doc)}
+                        className={cn(
+                          "opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-primary/20 transition-all",
+                          currentlySpeaking === doc.id ? "opacity-100 text-primary animate-pulse" : "text-muted-foreground"
+                        )}
+                      >
+                        {currentlySpeaking === doc.id ? <Pause className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                      </button>
+                    )}
                   </button>
                 ))
               )}

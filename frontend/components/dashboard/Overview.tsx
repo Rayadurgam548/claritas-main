@@ -4,7 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, Cell, PieChart, Pie
 } from 'recharts';
-import { ArrowRight, MoreHorizontal, Sparkles, AlertTriangle, Calendar as CalendarIcon, Lightbulb, FileText, Search, Activity, ShieldAlert, TrendingUp, Clock, Plus, Scale } from 'lucide-react';
+import { ArrowRight, MoreHorizontal, Sparkles, AlertTriangle, Calendar as CalendarIcon, Lightbulb, FileText, Search, Activity, ShieldAlert, TrendingUp, Clock, Plus, Scale, Volume2, Pause } from 'lucide-react';
 import { cn } from '@/app/lib/utils';
 import { LexDropZone } from './LexDropZone';
 import { useState, useEffect } from 'react';
@@ -25,8 +25,29 @@ export function DashboardOverview({ onNavigate, onUploadSuccess, documents = [] 
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<any[]>([]);
   const [aiQueriesCount, setAiQueriesCount] = useState(0); 
   const [recentQueries, setRecentQueries] = useState<any[]>([]);
-  const { language } = useLanguage();
+  const [currentlySpeaking, setCurrentlySpeaking] = useState<string | null>(null);
+  const { language, isMuted } = useLanguage();
   const t = translations[language];
+
+  const speakText = (id: string, text: string) => {
+    if (!('speechSynthesis' in window)) return;
+    
+    if (currentlySpeaking === id) {
+      window.speechSynthesis.cancel();
+      setCurrentlySpeaking(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language === 'Hindi' ? 'hi-IN' : language === 'Tamil' ? 'ta-IN' : language === 'Telugu' ? 'te-IN' : 'en-US';
+    
+    utterance.onstart = () => setCurrentlySpeaking(id);
+    utterance.onend = () => setCurrentlySpeaking(null);
+    utterance.onerror = () => setCurrentlySpeaking(null);
+    
+    window.speechSynthesis.speak(utterance);
+  };
 
   useEffect(() => {
     setUser(getUser());
@@ -366,27 +387,84 @@ export function DashboardOverview({ onNavigate, onUploadSuccess, documents = [] 
             </div>
           </div>
 
+          <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold">{t.recent_queries || 'Recent AI Questions'}</h3>
+              <button onClick={() => onNavigate?.('ai')} className="text-primary hover:text-primary/80"><ArrowRight className="w-5 h-5" /></button>
+            </div>
+            
+            <div className="space-y-4">
+              {recentQueries.length > 0 ? recentQueries.map((query, idx) => (
+                <div key={idx} className="p-4 rounded-2xl bg-muted/30 border border-border/50 hover:bg-muted/50 transition-colors group/query relative">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{query.text}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold tracking-tighter">{query.time}</p>
+                    </div>
+                    {!isMuted && (
+                      <button 
+                        onClick={() => speakText(`q-${idx}`, query.text)}
+                        className={cn(
+                          "opacity-0 group-hover/query:opacity-100 p-2 rounded-xl bg-card border border-border/50 text-primary transition-all hover:bg-muted",
+                          currentlySpeaking === `q-${idx}` && "opacity-100 animate-pulse border-primary"
+                        )}
+                      >
+                        {currentlySpeaking === `q-${idx}` ? <Pause className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )) : (
+                <p className="py-4 text-center text-muted-foreground text-sm italic">{t.no_queries_yet || 'No recent queries'}</p>
+              )}
+            </div>
+          </div>
+
           <div className="bg-card border border-border/50 rounded-3xl p-6 shadow-sm bg-gradient-to-tr from-[#27272a] to-[#18181b] text-white">
-            <div className="flex items-center gap-2 mb-4">
-              <Lightbulb className="w-5 h-5 text-[#f59e0b]" />
-              <h3 className="text-lg font-bold">Pro Legal Tips</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-5 h-5 text-[#f59e0b]" />
+                <h3 className="text-lg font-bold">Pro Legal Tips</h3>
+              </div>
             </div>
             
             <div className="space-y-5">
-               <div className="flex gap-4 items-start">
+               <div className="flex gap-4 items-start relative group/tip">
                 <div className="w-6 h-6 rounded-full bg-white/10 text-[#f59e0b] flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 border border-[#f59e0b]/30">1</div>
-                <div>
+                <div className="flex-1">
                   <h4 className="font-semibold text-sm mb-1">{t.tip_1_title}</h4>
                   <p className="text-xs text-white/60 leading-relaxed">{t.tip_1_desc}</p>
                 </div>
+                {!isMuted && (
+                  <button 
+                    onClick={() => speakText('tip1', `${t.tip_1_title}. ${t.tip_1_desc}`)}
+                    className={cn(
+                      "opacity-0 group-hover/tip:opacity-100 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-all",
+                      currentlySpeaking === 'tip1' && "opacity-100 text-[#f59e0b] animate-pulse"
+                    )}
+                  >
+                    {currentlySpeaking === 'tip1' ? <Pause className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                  </button>
+                )}
               </div>
               
-              <div className="flex gap-4 items-start">
+              <div className="flex gap-4 items-start relative group/tip">
                 <div className="w-6 h-6 rounded-full bg-white/10 text-[#f59e0b] flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 border border-[#f59e0b]/30">2</div>
-                <div>
+                <div className="flex-1">
                   <h4 className="font-semibold text-sm mb-1">{t.tip_2_title}</h4>
                   <p className="text-xs text-white/60 leading-relaxed">{t.tip_2_desc}</p>
                 </div>
+                {!isMuted && (
+                  <button 
+                    onClick={() => speakText('tip2', `${t.tip_2_title}. ${t.tip_2_desc}`)}
+                    className={cn(
+                      "opacity-0 group-hover/tip:opacity-100 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-all",
+                      currentlySpeaking === 'tip2' && "opacity-100 text-[#f59e0b] animate-pulse"
+                    )}
+                  >
+                    {currentlySpeaking === 'tip2' ? <Pause className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                  </button>
+                )}
               </div>
             </div>
           </div>

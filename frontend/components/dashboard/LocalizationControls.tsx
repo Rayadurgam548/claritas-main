@@ -12,8 +12,7 @@ interface LocalizationControlsProps {
 
 export function LocalizationControls({ onLanguageChange }: LocalizationControlsProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { language, setLanguage } = useLanguage();
-  const [isPlaying, setIsPlaying] = useState(false);
+  const { language, setLanguage, isMuted, setIsMuted } = useLanguage();
 
   const languages = ['English', 'Hindi', 'Tamil', 'Telugu'];
 
@@ -24,11 +23,7 @@ export function LocalizationControls({ onLanguageChange }: LocalizationControlsP
   };
 
   const toggleAudio = () => {
-    // Mock audio play
-    setIsPlaying(!isPlaying);
-    if (!isPlaying) {
-      setTimeout(() => setIsPlaying(false), 3000); // Stop after mock 3 seconds
-    }
+    setIsMuted(!isMuted);
   };
 
   return (
@@ -69,13 +64,13 @@ export function LocalizationControls({ onLanguageChange }: LocalizationControlsP
         onClick={toggleAudio}
         className={cn(
           "p-2.5 rounded-xl border transition-colors flex items-center justify-center group",
-          isPlaying 
-            ? "bg-primary text-primary-foreground border-primary" 
+          !isMuted 
+            ? "bg-primary text-primary-foreground border-primary shadow-glow" 
             : "bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground"
         )}
-        title="Listen to summary"
+        title={!isMuted ? "Mute audio" : "Unmute audio"}
       >
-        {isPlaying ? (
+        {!isMuted ? (
           <Volume2 className="w-4 h-4 animate-pulse" />
         ) : (
           <VolumeX className="w-4 h-4" />

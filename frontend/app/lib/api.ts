@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getToken } from './auth';
+import { MessageSquare, Send, Sparkles, FileText, Scale, Lightbulb, Upload, Volume2, VolumeX, Pause, ShieldAlert } from 'lucide-react';
 
 const API_BASE_URL = '/api';
 
@@ -79,15 +80,14 @@ export const LegalAPI = {
     return response.data.data;
   },
 
-  chat: async (documentId: string | null, query: string, mode: 'general' | 'document' | 'terminology' = 'document', language: string = 'English'): Promise<{ answer: string }> => {
-    const conciseQuery = `(Please be concise) ${query}`;
-    const response = await apiClient.post('/chat', { documentId, query: conciseQuery, mode, language });
-    return { answer: response.data.data.response };
+  chat: async (documentId: string | null, query: string, mode: 'general' | 'document' | 'terminology' = 'document', language: string = 'English'): Promise<{ answer: string; confidence: string; risk_flags: string[]; disclaimer: string }> => {
+    const response = await apiClient.post('/chat', { documentId, query, mode, language });
+    return response.data.data;
   },
 
   agentChat: async (documentId: string, agentType: string, query: string): Promise<{ answer: string }> => {
     const response = await apiClient.post('/agents/chat', { documentId, agentType, query });
-    return { answer: response.data.data.response };
+    return response.data.data;
   },
 
   deleteDocument: async (id: string): Promise<{ success: boolean }> => {

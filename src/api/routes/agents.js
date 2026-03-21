@@ -49,7 +49,7 @@ router.post('/chat', rateLimiter, async (req, res, next) => {
       query
     );
 
-    res.status(200).json({ success: true, data: { response } });
+    res.status(200).json({ success: true, data: response });
   } catch (error) {
     logger.error(`[Agents Router] Error chatting with ${req.body.agentType}`, error);
     next(error);

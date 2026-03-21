@@ -75,8 +75,12 @@ const chatDocumentation = async (req, res, next) => {
     }
 
     const response = await aiService.chatWithDocument(text, analysisJson, query, language);
+    console.log("DEBUG: Controller response from aiService:", JSON.stringify(response));
 
-    res.status(200).json({ success: true, data: { response } });
+    // Ultimate Safety Flattening
+    const dataToReturn = response.response ? response.response : response;
+    
+    res.status(200).json({ success: true, data: dataToReturn });
   } catch (error) {
     next(error);
   }

@@ -1,7 +1,7 @@
 'use client';
 
-import { Calendar as CalendarIcon, Clock, AlertTriangle, ChevronLeft, ChevronRight, Plus, MoreVertical, X, Trash } from 'lucide-react';
-import { format, addDays, startOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays, isSameDay } from 'date-fns';
+import { Calendar as CalendarIcon, Clock, AlertTriangle, ChevronLeft, ChevronRight, Plus, MoreVertical, X, Trash, Sparkles, Lightbulb, CheckCircle, ChevronDown } from 'lucide-react';
+import { format, addDays, startOfWeek, addWeeks, subWeeks, startOfMonth, endOfMonth, eachDayOfInterval, differenceInDays, isSameDay, isBefore, startOfDay } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { cn } from '@/app/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -20,6 +20,8 @@ export function Deadlines() {
   const [deadlines, setDeadlines] = useState<any[]>([]);
   const { language } = useLanguage();
   const t = translations[language];
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('lex_deadlines');
@@ -39,6 +41,7 @@ export function Deadlines() {
   const [newTitle, setNewTitle] = useState('');
   const [newDateStr, setNewDateStr] = useState('');
   const [newPriority, setNewPriority] = useState('Medium');
+  const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -90,21 +93,31 @@ export function Deadlines() {
                    const isToday = isSameDay(day, new Date());
 
                    return (
-                     <div key={i} className="flex flex-col items-center justify-start min-h-[50px] relative">
+                     <motion.div 
+                       key={i} 
+                       className="flex flex-col items-center justify-start min-h-[50px] relative mt-2"
+                       onMouseEnter={() => isCurrentMonth && setHoveredDate(day)}
+                       onMouseLeave={() => setHoveredDate(null)}
+                       onClick={() => isCurrentMonth && setSelectedDate(day)}
+                       whileHover={{ scale: 1.1 }}
+                       transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                     >
                         {isCurrentMonth ? (
                           <>
                             <div className={cn(
-                              "w-10 h-10 flex flex-col items-center justify-center rounded-2xl text-[15px] font-medium transition-all cursor-pointer hover:bg-muted/50 relative",
+                              "w-10 h-10 flex flex-col items-center justify-center rounded-2xl text-[15px] font-medium transition-all cursor-pointer relative",
                               dayDeadlines.length > 0 ? "bg-card/80 border shadow-sm" : "text-foreground",
                               dayDeadlines.length > 0 && hasHigh ? "bg-danger/10 border-danger/30 text-danger" : 
                               dayDeadlines.length > 0 && hasMedium ? "bg-warning/10 border-warning/30 text-warning" : 
                               dayDeadlines.length > 0 && hasLow ? "bg-success/10 border-success/30 text-success" : 
-                              dayDeadlines.length > 0 ? "border-[#4e8df5]/30 text-[#4e8df5]" : "",
-                              isToday ? "bg-[#4e8df5] text-white shadow-glow" : ""
+                              dayDeadlines.length > 0 ? "border-[#4e8df5]/30 text-[#4e8df5]" : "hover:bg-muted/50",
+                              isToday ? "bg-[#4e8df5] text-white shadow-glow" : "",
+                              selectedDate && isSameDay(day, selectedDate) ? "ring-2 ring-primary ring-offset-2 ring-offset-background z-20" : "",
+                              hoveredDate && isSameDay(day, hoveredDate) ? "shadow-glow-sm" : ""
                             )}>
                               {dateNum}
                             </div>
-                            <div className="flex gap-1 mt-1.5 absolute bottom-[-10px]">
+                            <div className="flex gap-1 mt-1.5 absolute bottom-[-5px]">
                               {hasHigh && <div className="w-1.5 h-1.5 rounded-full bg-danger shadow-glow"></div>}
                               {hasMedium && <div className="w-1.5 h-1.5 rounded-full bg-warning"></div>}
                               {hasLow && <div className="w-1.5 h-1.5 rounded-full bg-success"></div>}
@@ -113,7 +126,7 @@ export function Deadlines() {
                         ) : (
                           <div className="w-10 h-10"></div>
                         )}
-                     </div>
+                     </motion.div>
                    );
                  })}
                </div>
@@ -178,6 +191,105 @@ export function Deadlines() {
           </div>
           
         </div>
+
+        {/* Daily Insights Section */}
+        <AnimatePresence mode="wait">
+          {selectedDate && (
+            <motion.div 
+              key={selectedDate.toISOString()}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mt-8 mx-auto max-w-7xl w-full"
+            >
+              <div className="glass p-8 rounded-[2rem] border border-border/50 shadow-glow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 opacity-5">
+                   <CalendarIcon className="w-32 h-32" />
+                </div>
+                
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                   <div className="space-y-2">
+                     <h3 className="text-2xl font-bold text-foreground">
+                       {format(selectedDate, 'MMMM do, yyyy')}
+                     </h3>
+                     <p className="text-muted-foreground text-sm flex items-center gap-2">
+                       <Clock className="w-4 h-4 text-primary" /> 
+                       {deadlines.filter(d => isSameDay(d.date, selectedDate)).length > 0 ? (
+                         isBefore(startOfDay(selectedDate), startOfDay(new Date())) ? (
+                           <span className="text-danger font-bold uppercase tracking-wider text-[10px] bg-danger/10 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                             <AlertTriangle className="w-3 h-3" /> {t.overdue_deadlines || "Overdue"}
+                           </span>
+                         ) : (
+                           <span>{deadlines.filter(d => isSameDay(d.date, selectedDate)).length} {t.upcoming_deadlines}</span>
+                         )
+                       ) : (
+                         <span>{t.scheduled_today || "Scheduled for this day"}</span>
+                       )}
+                     </p>
+                   </div>
+                   
+                   <div className="flex flex-wrap gap-3">
+                     {deadlines.filter(d => isSameDay(d.date, selectedDate)).map((d, idx) => (
+                       <div key={idx} className={cn(
+                         "px-4 py-3 rounded-2xl border flex flex-col gap-3 min-w-[200px] transition-all hover:border-primary/50",
+                         d.priority === 'High' ? "bg-danger/10 border-danger/20 text-danger" : 
+                         d.priority === 'Medium' ? "bg-warning/10 border-warning/20 text-warning" : "bg-success/10 border-success/20 text-success"
+                       )}>
+                         <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 font-bold">
+                               <AlertTriangle className="w-4 h-4" /> {d.title}
+                            </div>
+                            <button 
+                              onClick={() => {
+                                const newD = deadlines.filter(item => item.id !== d.id);
+                                setDeadlines(newD);
+                                localStorage.setItem('lex_deadlines', JSON.stringify(newD));
+                              }}
+                              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                              title="Mark as Resolved"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </button>
+                         </div>
+                         <div className="flex gap-2">
+                            <button className="text-[10px] uppercase font-bold px-2 py-1 bg-white/10 rounded-lg hover:bg-white/20 transition-all">Snooze</button>
+                            <button className="text-[10px] uppercase font-bold px-2 py-1 bg-white/10 rounded-lg hover:bg-white/20 transition-all">Review Docs</button>
+                         </div>
+                       </div>
+                     ))}
+                     {deadlines.filter(d => isSameDay(d.date, selectedDate)).length === 0 && (
+                       <div className="px-6 py-4 rounded-2xl bg-muted/50 border border-border/50 text-muted-foreground text-sm italic flex flex-col items-center gap-2">
+                         <Sparkles className="w-8 h-8 opacity-20" />
+                         No major deadlines scheduled.
+                       </div>
+                     )}
+                   </div>
+                </div>
+
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                   <div className="p-6 rounded-[1.5rem] bg-primary/5 border border-primary/10 shadow-sm transition-all hover:bg-primary/10">
+                      <h4 className="font-bold text-primary mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Legal Insight</h4>
+                      <p className="text-sm leading-relaxed text-foreground/80">
+                        {isBefore(startOfDay(selectedDate), startOfDay(new Date())) 
+                          ? "This date has passed. If there were unresolved obligations, check for 'Cure Period' clauses in your contract to mitigate late penalties."
+                          : deadlines.filter(d => isSameDay(d.date, selectedDate)).length > 0 
+                            ? "Prioritize documentation for today's tasks. High-priority items require immediate review of termination clauses and indemnity obligations."
+                            : "Today is a great day for proactive risk assessment. Review your saved templates or update your entity profiles to ensure compliance readiness."}
+                      </p>
+                   </div>
+                   <div className="p-6 rounded-[1.5rem] bg-card/50 border border-border/50 shadow-sm transition-all hover:bg-card">
+                      <h4 className="font-bold text-foreground mb-2 flex items-center gap-2"><Lightbulb className="w-4 h-4 text-warning" /> Pro Strategy</h4>
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        {isBefore(startOfDay(selectedDate), startOfDay(new Date()))
+                          ? "Historical data analysis suggests that most litigation risks stem from missed notification windows. Always set reminders 14 days in advance."
+                          : "Always verify the 'Effective Date' versus the 'Signing Date' in contracts due this week to avoid accidental breaches of performance timelines."}
+                      </p>
+                   </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Add Deadline Modal */}
@@ -217,17 +329,60 @@ export function Deadlines() {
                     className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
-                <div>
+                <div className="relative">
                   <label className="text-sm font-semibold mb-1.5 block">Priority</label>
-                  <select 
-                    value={newPriority} 
-                    onChange={e => setNewPriority(e.target.value)}
-                    className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary appearance-none"
+                  <button 
+                    type="button"
+                    onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
+                    className="w-full bg-muted/30 border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary flex items-center justify-between transition-all hover:bg-muted/40"
                   >
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
+                    <div className="flex items-center gap-2">
+                       <div className={cn(
+                         "w-2 h-2 rounded-full",
+                         newPriority === 'High' ? 'bg-danger shadow-glow' : 
+                         newPriority === 'Medium' ? 'bg-warning' : 'bg-success'
+                       )}></div>
+                       <span className="font-medium text-foreground">{newPriority}</span>
+                    </div>
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", showPriorityDropdown ? "rotate-180" : "")} />
+                  </button>
+                  
+                  <AnimatePresence>
+                    {showPriorityDropdown && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-full left-0 right-0 mt-2 bg-card border border-border/50 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                      >
+                        {['High', 'Medium', 'Low'].map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => {
+                              setNewPriority(p);
+                              setShowPriorityDropdown(false);
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors flex items-center gap-3 border-b border-border/10 last:border-0"
+                          >
+                             <div className={cn(
+                               "w-2.5 h-2.5 rounded-full",
+                               p === 'High' ? 'bg-danger shadow-glow-sm' : 
+                               p === 'Medium' ? 'bg-warning' : 'bg-success'
+                             )}></div>
+                             <span className={cn(
+                               "text-sm font-semibold",
+                               p === 'High' ? 'text-danger' : 
+                               p === 'Medium' ? 'text-warning' : 'text-success'
+                             )}>{p}</span>
+                             {newPriority === p && (
+                               <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary"></div>
+                             )}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
                 
                 <button 

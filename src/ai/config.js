@@ -10,7 +10,7 @@ if (!process.env.GEMINI_API_KEY) {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy_key');
 
 // Use sensible defaults for language models
-const getModel = (modelName = 'gemini-1.5-flash', generationConfig = {}) => {
+const getModel = (modelName = 'gemini-flash-latest', generationConfig = {}) => {
   return genAI.getGenerativeModel({
     model: modelName,
     generationConfig: {
